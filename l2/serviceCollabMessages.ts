@@ -1,30 +1,32 @@
 /// <mls shortName="serviceCollabMessages" project="102025" enhancement="_100554_enhancementLitService" />
 
-import { html} from 'lit';
+import { html } from 'lit';
 import { customElement, property, state, query } from 'lit/decorators.js';
 import { addCoachMark, ICoachMarks } from '/_100554_/l2/coachMarks';
-import { listThreads, addThread, listUsers, updateUsers, getThread, cleanupThreads, getTask } from '/_102025_/l2/collabMessagesIndexedDB';
+import { listThreads, addThread, listUsers, updateUsers, getThread, cleanupThreads, getTask } from '/_102025_/l2/collabMessagesIndexedDB.js';
 import {
     saveLastTab,
     loadLastTab,
     saveUserId,
     saveLastAlertTime,
     loadLastAlertTime
-} from "/_102025_/l2/collabMessagesHelper";
+} from "/_102025_/l2/collabMessagesHelper.js";
 
-import { openService } from "/_100554_/l2/libCommom";
-import { checkIfNotificationUnread } from '/_102025_/l2/collabMessagesSyncNotifications';
+import { openService } from "/_100554_/l2/libCommom.js";
+import { checkIfNotificationUnread } from '/_102025_/l2/collabMessagesSyncNotifications.js';
 
-import { ServiceBase, IService, IToolbarContent, IServiceMenu } from '/_100554_/l2/serviceBase';
-import { ICollabMessageEvent } from '/_102025_/l2/collabMessagesHelper';
-import { setFavicon } from '/_100554_/l2/collabInit';
-import { collab_bell_slash, collab_xmark } from '/_102025_/l2/collabMessagesIcons';
+import { ServiceBase, IService, IToolbarContent, IServiceMenu } from '/_100554_/l2/serviceBase.js';
+import { ICollabMessageEvent } from '/_102025_/l2/collabMessagesHelper.js';
+import { setFavicon } from '/_100554_/l2/collabInit.js';
+import { collab_bell_slash, collab_xmark } from '/_102025_/l2/collabMessagesIcons.js';
 
-import '/_102025_/l2/collabMessagesAdd';
-import '/_102025_/l2/collabMessagesChat';
-import '/_102025_/l2/collabMessagesTasks';
-import '/_102025_/l2/collabMessagesSettings';
-import '/_102025_/l2/collabMessagesFindtask';
+import '/_102025_/l2/collabMessagesAdd.js';
+import '/_102025_/l2/collabMessagesChat.js';
+import '/_102025_/l2/collabMessagesTasks.js';
+import '/_102025_/l2/collabMessagesApps.js';
+import '/_102025_/l2/collabMessagesMoments.js';
+import '/_102025_/l2/collabMessagesSettings.js';
+import '/_102025_/l2/collabMessagesFindtask.js';
 
 
 /// **collab_i18n_start** 
@@ -36,6 +38,8 @@ const message_pt = {
     connect: 'Conectar',
     alertMsgTitle: 'Ative as notificações',
     alertMsgBody: 'Para não perder mensagens importantes, permita notificações no navegador.',
+    moments: 'Moments',
+    apps: 'Apps'
 
 }
 
@@ -47,6 +51,8 @@ const message_en = {
     connect: 'Connect',
     alertMsgTitle: 'Enable notifications',
     alertMsgBody: 'To avoid missing important messages, allow notifications in your browser.',
+    moments: 'Moments',
+    apps: 'Apps'
 }
 
 type MessageType = typeof message_en;
@@ -96,6 +102,7 @@ export class ServiceCollabMessages extends ServiceBase {
             return;
         };
         this.activeTab = ETabs[index] as ITabType;
+        if (this.level === 7 && this.activeTab === 'APPS') return;
         saveLastTab(this.activeTab);
     }
 
@@ -120,12 +127,7 @@ export class ServiceCollabMessages extends ServiceBase {
             group: 'Mode',
             type: 'onlyicon',
             selected: ETabs.Loading,
-            options: [
-                { text: this.msg.crm, icon: 'f095' },
-                { text: this.msg.tasks, icon: 'f0ae' },
-                { text: this.msg.connect, icon: 'f0c1' },
-                { text: this.msg.docs, icon: 'f02d' },
-            ]
+            options: []
         },
         onClickMain: this.onClickMain.bind(this),
         onClickTabs: this.onClickTabs.bind(this),
@@ -136,7 +138,35 @@ export class ServiceCollabMessages extends ServiceBase {
     onServiceClick(visible: boolean, reinit: boolean, el: IToolbarContent | null) {
         if (visible) {
             this.checkNotificationPermission();
+            this.configureByLevel()
         }
+    }
+
+    private isFirstEnter: boolean = true;
+    private configureByLevel() {
+        if (!this.menu || !this.menu.tabs) return;
+        if (this.level === 7) {
+            this.menu.tabs.options = [
+                { text: this.msg.crm, icon: 'f095' },
+                { text: this.msg.tasks, icon: 'f0ae' },
+                { text: this.msg.connect, icon: 'f0c1' },
+                { text: this.msg.moments, icon: 'f1ea' },
+                { text: this.msg.apps, icon: 'f58d' },
+            ]
+        } else {
+            this.menu.tabs.options = [
+                { text: this.msg.crm, icon: 'f095' },
+                { text: this.msg.tasks, icon: 'f0ae' },
+                { text: this.msg.connect, icon: 'f0c1' },
+                { text: this.msg.apps, icon: 'f58d' },
+            ]
+            if (this.isFirstEnter) {
+                this.isFirstEnter = false;
+                this.menu.tabs.selected = ETabs[loadLastTab() as ITabType];
+            }
+        }
+
+        if (this.menu && this.menu.refresh) this.menu.refresh('tabs')
     }
 
 
@@ -170,8 +200,11 @@ export class ServiceCollabMessages extends ServiceBase {
             case 'TASK':
                 name = 'collab-messages-tasks-102025';
                 break;
-            case 'DOCS':
-                name = 'collab-messages-chat-102025';
+            case 'APPS':
+                name = 'collab-messages-apps-102025';
+                break;
+            case 'MOMENTS':
+                name = 'collab-messages-moments-102025';
                 break;
             case 'CONNECT':
                 name = 'collab-messages-chat-102025';
@@ -197,7 +230,9 @@ export class ServiceCollabMessages extends ServiceBase {
 
     async connectedCallback() {
         super.connectedCallback();
-        this.dataLocal.lastTab = loadLastTab() as ITabType;
+        if (this.level === 7) {
+            this.dataLocal.lastTab = 'APPS';
+        } else this.dataLocal.lastTab = loadLastTab() as ITabType;
         this.setEvents();
         const hasPendingMessages = await checkIfNotificationUnread();
         if (hasPendingMessages) {
@@ -259,8 +294,10 @@ export class ServiceCollabMessages extends ServiceBase {
                 return this.renderCRM();
             case 'TASK':
                 return this.renderTasks()
-            case 'DOCS':
-                return this.renderDocs();
+            case 'MOMENTS':
+                return this.renderMoments();
+            case 'APPS':
+                return this.renderApps();
             case 'CONNECT':
                 return this.renderConnect();
             case 'Loading':
@@ -313,23 +350,17 @@ export class ServiceCollabMessages extends ServiceBase {
         this.execCoachMarks('Tasks');
         return html`<collab-messages-tasks-102025></collab-messages-tasks-102025>`
     }
-    //style="height:${this.style.height}"
 
-    renderDocs() {
-        this.groupSelected = 'DOCS';
-        this.execCoachMarks('Docs');
-        return html`<collab-messages-chat-102025 
-            
-            .isLoadingThread= ${this.isLoadingThread}
-            group="DOCS"
-            .userThreads=${{
-                DOCS: Object.keys(this.userThreads)
-                    .filter((key) => this.userThreads[key].thread.group === 'DOCS')
-                    .map((key) => this.userThreads[key])
-            }} 
-            .allThreads=${Object.keys(this.userThreads).map((key) => this.userThreads[key].thread)}
-            userId=${this.userPerfil?.userId} 
-        ></collab-messages-chat-102025>`
+    renderMoments() {
+        this.groupSelected = 'MOMENTS';
+        this.execCoachMarks('Moments');
+        return html`<collab-messages-moments-102025 ></collab-messages-moments-102025>`
+    }
+
+    renderApps() {
+        this.groupSelected = 'APPS';
+        this.execCoachMarks('Apps');
+        return html`<collab-messages-apps-102025 ></collab-messages-apps-102025>`
     }
 
     renderConnect() {
@@ -430,7 +461,7 @@ export class ServiceCollabMessages extends ServiceBase {
 
 
     private execCoachMarks(name: string) {
-
+        return;
         if (this.visible === 'false') return;
 
         const infoMark: ICoachMarks = {
@@ -546,11 +577,12 @@ enum ETabs {
     'CRM' = 0,
     'TASK' = 1,
     'CONNECT' = 2,
-    'DOCS' = 3,
-    'Add' = 4,
-    'Loading' = 5,
+    'MOMENTS' = 3,
+    'APPS' = 4,
+    'Add' = 5,
+    'Loading' = 6,
 }
 
 
-type ITabType = 'CRM' | 'TASK' | 'DOCS' | 'CONNECT' | 'Add' | 'Loading';
+type ITabType = 'CRM' | 'TASK' | 'MOMENTS' | 'CONNECT' | 'APPS' | 'Add' | 'Loading';
 type IScenery = 'tabs' | 'settings' | 'findTask'
