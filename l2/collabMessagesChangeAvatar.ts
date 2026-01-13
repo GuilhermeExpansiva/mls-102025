@@ -4,7 +4,8 @@ import { html, unsafeHTML } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { StateLitElement } from '/_100554_/l2/stateLitElement.js';
 import { IAgent } from '/_100554_/l2/aiAgentBase.js';
-import { getTemporaryContext, getAgentInstanceByName } from '/_100554_/l2/aiAgentHelper.js';
+import { getTemporaryContext } from '/_100554_/l2/aiAgentHelper.js';
+import { loadAgent, executeBeforePrompt } from '/_100554_/l2/aiAgentOrchestration.js';
 import { defaultThreadImage } from '/_102025_/l2/collabMessagesHelper.js';
 
 /// **collab_i18n_start** 
@@ -141,11 +142,11 @@ export class CollabChangeAvatar extends StateLitElement {
 
     try {
 
-      const agent = await getAgentInstanceByName(agentName);
+      const agent = await loadAgent(agentName);
       if (!agent) throw new Error('Invalid agent');
 
       const context = getTemporaryContext(this.threadId, this.userId, this.avatarPrompt);
-      await agent.beforePrompt(context);
+      await executeBeforePrompt(agent, context);
 
       if (context.task &&
         context.task.iaCompressed &&

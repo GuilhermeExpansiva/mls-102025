@@ -10,9 +10,9 @@ import { setFavicon } from '/_100554_/l2/collabInit.js';
 import {
     getTemporaryContext,
     formatTimestamp,
-    getAgentInstanceByName,
     notifyThreadChange
 } from '/_100554_/l2/aiAgentHelper.js';
+import { loadAgent, executeBeforePrompt } from '/_100554_/l2/aiAgentOrchestration.js';
 
 import {
     addOrUpdateTask,
@@ -1685,9 +1685,10 @@ export class CollabMessagesChat extends StateLitElement {
     private async loadAgent(shortName: string): Promise<IAgent> {
 
         try {
-            const agent = await getAgentInstanceByName(shortName);
+
+            const agent = loadAgent(shortName);
             if (!agent) throw new Error(`(loadAgent) createAgent function not found in ${shortName}`);
-            return agent;
+            return agent as any;
         } catch (error: any) {
             throw new Error(`[loadAgent] ${error.message || error} `);
         }

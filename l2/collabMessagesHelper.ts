@@ -5,8 +5,8 @@ import {
     notifyMessageSendChange,
     notifyThreadChange,
     notifyThreadCreate,
-    getAgentInstanceByName
 } from '/_100554_/l2/aiAgentHelper.js';
+import { loadAgent, executeBeforePrompt } from '/_100554_/l2/aiAgentOrchestration.js';
 
 import { addThread, listThreads, updateThread } from '/_102025_/l2/collabMessagesIndexedDB.js';
 
@@ -72,9 +72,10 @@ export async function addMessage(threadId: string, messageContent: string, conte
 
     const agentName = extractAgentName(messageContent) || AGENTDEFAULT;
 
-    const moduleAgent = await getAgentInstanceByName(agentName);
+
+    const moduleAgent = await loadAgent(agentName);
     if(!moduleAgent) throw new Error('Invalid Agent')
-    await moduleAgent.beforePrompt(context);
+    await executeBeforePrompt(moduleAgent, context);
     return context;
 
 }
@@ -94,7 +95,7 @@ export async function getBotsContext(thread: mls.msg.Thread, prompt: string, con
     const auxContextToBot: Record<string, any>[] = []
     for await (let bot of botsVarsBefore2) {
         try {
-            const moduleBot = await getAgentInstanceByName(bot.toolName);
+            const moduleBot = await loadAgent(bot.toolName);
             if (moduleBot && moduleBot.beforeBot && typeof moduleBot.beforeBot === 'function') {
                 const argsBot: Record<string, any> = await moduleBot.beforeBot(context, prompt, botsVarsBefore2)
                 auxContextToBot.push(argsBot);
