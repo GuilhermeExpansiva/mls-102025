@@ -61,8 +61,6 @@ export async function addMessages(messages: mls.msg.MessagePerformanceCache[]): 
             const newMessage = {
                 ...{ ...message, lastSync: getCompactUTC() },
                 messageId: `${message.threadId}/${message.createAt}`,
-
-
             };
             store.put(newMessage);
         }
@@ -359,6 +357,34 @@ export async function addThread(thread: mls.msg.Thread): Promise<mls.msg.ThreadP
     });
 }
 
+
+
+export async function updateLastMessageReadTime(threadId: string, lastMessageReadTime: string): Promise<mls.msg.ThreadPerformanceCache> {
+
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction("threads", "readwrite");
+        const store = tx.objectStore("threads");
+        const request = store.get(threadId);
+
+        request.onsuccess = () => {
+            let threadDb = request.result;
+
+            if (!threadDb) {
+                reject(`Thread com ID ${threadId} não encontrada.`);
+                return;
+            }
+
+            threadDb = { ...threadDb, lastMessageReadTime }
+            const updateRequest = store.put(threadDb);
+            updateRequest.onsuccess = () => resolve(threadDb);
+            updateRequest.onerror = () => reject("Erro ao atualizar a thread");
+        };
+
+        request.onerror = () => reject("Erro ao buscar a thread");
+    });
+}
+
 export async function updateThread(
     threadId: string,
     thread: mls.msg.Thread,
@@ -474,11 +500,11 @@ export async function cleanupThreads(validThreadIds: string[]): Promise<void> {
         (t) => !validThreadIds.includes(t.threadId)
     );
 
-    if (threadsToDelete.length === 0) return; 
+    if (threadsToDelete.length === 0) return;
 
     for (const thread of threadsToDelete) {
         try {
-    
+
             await deleteAllMessagesFromThread(thread.threadId);
             await new Promise<void>((resolve, reject) => {
                 const tx = db.transaction("threads", "readwrite");
