@@ -1,6 +1,6 @@
 /// <mls shortName="serviceCollabMessages" project="102025" enhancement="_100554_enhancementLitService" />
 
-import { html } from 'lit';
+import { html, ifDefined } from 'lit';
 import { customElement, property, state, query } from 'lit/decorators.js';
 import { addCoachMark, ICoachMarks } from '/_100554_/l2/coachMarks';
 import { listThreads, addThread, listUsers, updateUsers, getThread, cleanupThreads, getTask } from '/_102025_/l2/collabMessagesIndexedDB.js';
@@ -12,12 +12,12 @@ import {
     loadLastAlertTime
 } from "/_102025_/l2/collabMessagesHelper.js";
 
-import { openService } from "/_100554_/l2/libCommom.js";
+import { openService, changeFavIcon } from "/_100554_/l2/libCommom.js";
 import { checkIfNotificationUnread } from '/_102025_/l2/collabMessagesSyncNotifications.js';
 
 import { ServiceBase, IService, IToolbarContent, IServiceMenu } from '/_100554_/l2/serviceBase.js';
 import { ICollabMessageEvent } from '/_102025_/l2/collabMessagesHelper.js';
-import { setFavicon } from '/_100554_/l2/collabInit.js';
+
 import { collab_bell_slash, collab_xmark } from '/_102025_/l2/collabMessagesIcons.js';
 
 import '/_102025_/l2/collabMessagesAdd.js';
@@ -77,6 +77,8 @@ export class ServiceCollabMessages extends ServiceBase {
 
     @state() threadToOpen: string = '';
     @state() taskToOpen: string = '';
+    @state() lastLevel: number = -1;
+
 
     groupSelected: ITabType = 'CRM';
 
@@ -138,22 +140,29 @@ export class ServiceCollabMessages extends ServiceBase {
     onServiceClick(visible: boolean, reinit: boolean, el: IToolbarContent | null) {
         if (visible) {
             this.checkNotificationPermission();
-            this.configureByLevel()
+            this.configureByLevel();
+
         }
     }
 
     private isFirstEnter: boolean = true;
     private configureByLevel() {
+
         if (!this.menu || !this.menu.tabs) return;
-        if (this.level === 7) {
+
+        if (this.level === 7 && this.lastLevel !== 7) {
             this.menu.tabs.options = [
                 { text: this.msg.crm, icon: 'f095' },
                 { text: this.msg.tasks, icon: 'f0ae' },
                 { text: this.msg.connect, icon: 'f0c1' },
                 { text: this.msg.moments, icon: 'f1ea' },
                 { text: this.msg.apps, icon: 'f58d' },
-            ]
-        } else {
+            ];
+            if (this.menu && this.menu.refresh) this.menu.refresh('tabs');
+
+        }
+
+        if (this.lastLevel === 7 && this.level !== 7) {
             this.menu.tabs.options = [
                 { text: this.msg.crm, icon: 'f095' },
                 { text: this.msg.tasks, icon: 'f0ae' },
@@ -164,9 +173,12 @@ export class ServiceCollabMessages extends ServiceBase {
                 this.isFirstEnter = false;
                 this.menu.tabs.selected = ETabs[loadLastTab() as ITabType];
             }
+            if (this.menu && this.menu.refresh) this.menu.refresh('tabs');
+
         }
 
-        if (this.menu && this.menu.refresh) this.menu.refresh('tabs')
+        this.lastLevel = this.level;
+
     }
 
 
@@ -236,7 +248,7 @@ export class ServiceCollabMessages extends ServiceBase {
         this.setEvents();
         const hasPendingMessages = await checkIfNotificationUnread();
         if (hasPendingMessages) {
-            setFavicon(true);
+            changeFavIcon(true);
             mls.services['102025_serviceCollabMessages_left']?.toogleBadge(true, '_102025_serviceCollabMessages');
         }
     }
@@ -379,8 +391,8 @@ export class ServiceCollabMessages extends ServiceBase {
                     .map((key) => this.userThreads[key])
             }}
             .allThreads=${Object.keys(this.userThreads).map((key) => this.userThreads[key].thread)}
-            threadToOpen=${this.threadToOpen}
-            taskToOpen=${this.taskToOpen}
+            threadToOpen=${ifDefined(this.threadToOpen || undefined)}
+            taskToOpen=${ifDefined(this.taskToOpen || undefined)}
 
             userId=${this.userPerfil?.userId} 
         ></collab-messages-chat-102025>`
