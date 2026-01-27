@@ -50,8 +50,8 @@ export class CollabMessagesTask extends StateLitElement {
     @state() private secondsPassed: number = 0;
     @state() private lastStep: number | undefined;
     @state() continueEnabled: boolean = false;
+    
     private timerId: number | undefined;
-
 
     disconnectedCallback() {
         super.disconnectedCallback();
@@ -79,7 +79,6 @@ export class CollabMessagesTask extends StateLitElement {
                 }
             }
         }
-
 
         if (changedProperties.has('taskid') && changedProperties.get('taskid') !== '') {
             this.getTaskLocal(this.taskid);
