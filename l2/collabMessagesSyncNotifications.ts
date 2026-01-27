@@ -2,8 +2,9 @@
 
 import { getUserId, loadNotificationDeviceId, loadNotificationPreferencesAudio } from "/_102025_/l2/collabMessagesHelper.js";
 import { getThread, updateThread, getMessage, addMessages, getAllThreads, addThread } from '/_102025_/l2/collabMessagesIndexedDB.js';
+
+import { changeFavIcon } from "/_100554_/l2/libCommom.js";
 import { notifyThreadChange } from '/_100554_/l2/aiAgentHelper.js';
-import { setFavicon } from '/_100554_/l2/collabInit.js';
 
 export const threadSyncMap = new Map<string, boolean>();
 let hasNotificationMessages: boolean = false;
@@ -50,7 +51,7 @@ export async function listenToThreadEvents() {
         }
 
         if (!isThreadOpened || (isThreadOpened && document.visibilityState === 'hidden') && hasNotificationMessages) {
-            setFavicon(true);
+            changeFavIcon(true);
             mls.services['102025_serviceCollabMessages_left']?.toogleBadge(true, '_102025_serviceCollabMessages');
             const audioEnabled = loadNotificationPreferencesAudio();
             if (audioEnabled) {
