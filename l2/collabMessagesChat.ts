@@ -222,7 +222,7 @@ export class CollabMessagesChat extends StateLitElement {
         super.disconnectedCallback();
         window.removeEventListener('task-change', this.onTaskChange);
         window.removeEventListener('task-details-close', this.onTaskDetailsClose);
-        window.removeEventListener('thread-change', this.onThreadChange);
+        window.removeEventListener('thread-change', this.onThreadChange.bind(this));
         window.removeEventListener('message-send', this.onMessageSend);
         document.removeEventListener("visibilitychange", this.onVisibilityChange.bind(this));
 
@@ -232,7 +232,7 @@ export class CollabMessagesChat extends StateLitElement {
         super.firstUpdated(changedProperties);
         window.addEventListener('task-change', this.onTaskChange);
         window.addEventListener('task-details-close', this.onTaskDetailsClose);
-        window.addEventListener('thread-change', this.onThreadChange);
+        window.addEventListener('thread-change', this.onThreadChange.bind(this));
         window.addEventListener('message-send', this.onMessageSend);
         document.addEventListener("visibilitychange", this.onVisibilityChange.bind(this));
     }
