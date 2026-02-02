@@ -211,9 +211,11 @@ export class CollabMessagesChat extends StateLitElement {
         if (changedProperties.has('actualMessagesParsed') && this.actualMessagesParsed !== undefined) {
             if (this.messageContainer && (this.isSystemChangeScroll)) {
                 await this.updateComplete;
-                this.messageContainer.scrollTop = this.messageContainer.scrollHeight;
+                const target = this.unreadEl;
+                let offset = this.messageContainer.scrollHeight;
+                if (target) target.scrollIntoView({ block: 'center' })
+                else this.messageContainer.scrollTop = offset;
                 this.isSystemChangeScroll = false;
-
             }
         }
     }
@@ -1330,6 +1332,7 @@ export class CollabMessagesChat extends StateLitElement {
         this.unreadCountInSelectedThread = temp?.unreadCount || 0;
         const messagesInDb = await getMessagesByThreadId(this.actualThread.thread.threadId, this.messagesLimit, 0);
         this.actualMessages = messagesInDb;
+        this.isSystemChangeScroll = true;
         this.actualMessagesParsed = this.parseMessages(this.actualMessages, this.lastTopicFilter);
         this.activeScenerie = 'details';
         this.isLoadingMessages = true;
@@ -1370,17 +1373,6 @@ export class CollabMessagesChat extends StateLitElement {
                 this.openTask();
             }
 
-            if (this.messageContainer) {
-
-                await this.updateComplete;
-                const container = this.messageContainer;
-                const target = this.unreadEl;
-                let offset = this.messageContainer.scrollHeight;
-                if (target) {
-                    // offset = target.offsetTop - container.offsetTop;
-                    target.scrollIntoView({ block: 'center' })
-                } else this.messageContainer.scrollTop = offset;
-            }
 
         } catch (err: any) {
             this.isThreadError = true;
@@ -1640,7 +1632,8 @@ export class CollabMessagesChat extends StateLitElement {
             delete cloned.isLoading;
             delete cloned.lastChanged;
 
-            if (oldContextCreateAt) this.isSystemChangeScroll = true;
+            // if (oldContextCreateAt) this.isSystemChangeScroll = true;
+
             this.actualMessagesParsed = this.parseMessages(this.actualMessages, this.lastTopicFilter);
             await addMessage(cloned);
             this.requestUpdate();
