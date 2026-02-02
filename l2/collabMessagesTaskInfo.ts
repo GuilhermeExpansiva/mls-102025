@@ -33,16 +33,18 @@ export class CollabMessagesTaskInfo extends StateLitElement {
         super.connectedCallback();
         this.elParent = this.closest('collab-messages-chat-102025') as HTMLElement;
         if (this.elParent) this.elParent.style.width = '100%';
-
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
         if (this.elParent) this.elParent.style.width = '';
+        window.removeEventListener('task-change', this.onTaskChange.bind(this));
+
     }
 
     async firstUpdated(changedProperties: Map<PropertyKey, unknown>) {
         super.firstUpdated(changedProperties);
+        window.addEventListener('task-change', this.onTaskChange.bind(this));
         if (this.interactionClarification) {
             this.setClarification();
         }
@@ -189,6 +191,14 @@ export class CollabMessagesTaskInfo extends StateLitElement {
 
     private setTab(tab: 'workflow' | 'step' | 'raw' | 'todo') {
         this.activeTab = tab;
+    }
+
+    private onTaskChange(e: Event) {
+        if (!this.task) return;
+        const customEvent = e as CustomEvent;
+        const task: mls.msg.TaskData = customEvent.detail.context.task;
+        if (task.PK !== this.task.PK) return;
+        this.task = task;
     }
 
 }
