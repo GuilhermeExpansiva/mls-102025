@@ -1527,12 +1527,13 @@ export class CollabMessagesChat extends StateLitElement {
 
     private async addMessage(prompt: string) {
         if (!this.userId || !this.actualThread) return;
-
+        this.unreadCountInSelectedThread = 0;
         const message: IMessage = await this.createTempMessage(prompt, this.userId, this.actualThread.thread.threadId);
         try {
             const context: mls.msg.ExecutionContext = {
                 message,
-                task: undefined
+                task: undefined,
+                isTest: false
             }
             const contextToBot = await getBotsContext(this.actualThread.thread, prompt, context);
             const params: mls.msg.RequestAddMessage = {
@@ -1557,6 +1558,7 @@ export class CollabMessagesChat extends StateLitElement {
 
     private async addMessageIA(prompt: string, agentName: string) {
         if (!this.userId || !this.actualThread) return;
+        this.unreadCountInSelectedThread = 0;
         const context = getTemporaryContext(this.actualThread.thread.threadId, this.userId, prompt);
         let agentToCall = AGENTDEFAULT;
         if (agentName) agentToCall = agentName;
@@ -1702,7 +1704,8 @@ export class CollabMessagesChat extends StateLitElement {
             if (module && module.afterBot && typeof module.afterBot === 'function') {
                 const context: mls.msg.ExecutionContext = {
                     message: newMessage,
-                    task: undefined
+                    task: undefined,
+                    isTest: false
                 }
                 try {
                     const response = await module.afterBot(context, item);

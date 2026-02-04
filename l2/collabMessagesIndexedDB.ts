@@ -54,7 +54,8 @@ export function openDB(): Promise<IDBDatabase> {
         };
 
         request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject("Erro ao abrir o IndexedDB");
+        request.onerror = () => reject("Failed to open IndexedDB");
+
     });
 }
 
@@ -73,8 +74,8 @@ export async function addMessages(messages: mls.msg.MessagePerformanceCache[]): 
         }
 
         tx.oncomplete = () => resolve();
-        tx.onerror = () => reject("Erro ao adicionar mensagens");
-        tx.onabort = () => reject("Transação abortada ao adicionar mensagens");
+        tx.onerror = () => reject("Failed to add messages");
+        tx.onabort = () => reject("Transaction aborted while saving messages");
     });
 }
 
@@ -119,8 +120,8 @@ export async function addMessage(message: mls.msg.MessagePerformanceCache): Prom
 
                     storeWrite.put(newMessage);
                     txWrite.oncomplete = () => resolve();
-                    txWrite.onerror = () => reject("Erro ao adicionar mensagem");
-                    txWrite.onabort = () => reject("Transação abortada");
+                    txWrite.onerror = () => reject("Failed to add message");
+                    txWrite.onabort = () => reject("Transaction was aborted");
 
                 } catch (err) {
                     reject(err);
@@ -128,7 +129,7 @@ export async function addMessage(message: mls.msg.MessagePerformanceCache): Prom
             }
         };
 
-        request.onerror = () => reject("Erro ao ler mensagens da thread");
+        request.onerror = () => reject("Failed to read thread messages");
     });
 }
 
@@ -145,7 +146,7 @@ export async function updateMessage(message: mls.msg.Message): Promise<void> {
 
         getRequest.onsuccess = () => {
             if (!getRequest.result) {
-                reject(`Mensagem com ID ${messageId} não encontrada.`);
+                reject(`Message not found (ID: ${messageId}).`);
                 return;
             }
 
@@ -157,11 +158,10 @@ export async function updateMessage(message: mls.msg.Message): Promise<void> {
 
             const updateRequest = store.put(updatedMessage);
             updateRequest.onsuccess = () => resolve();
-            updateRequest.onerror = () => reject("Erro ao atualizar mensagem.");
+            updateRequest.onerror = () => reject("Failed to update message.");
         };
-
-        getRequest.onerror = () => reject("Erro ao buscar mensagem para atualização.");
-        tx.onabort = () => reject("Transação abortada.");
+        getRequest.onerror = () => reject("Failed to fetch message for update.");
+        tx.onabort = () => reject("Transaction was aborted.");
     });
 }
 
@@ -193,9 +193,9 @@ export async function deleteAllMessagesFromThread(threadId: string): Promise<voi
             }
         };
 
-        request.onerror = () => reject("Erro ao deletar mensagens da thread");
-        tx.onerror = () => reject("Erro na transação de deleção");
-        tx.onabort = () => reject("Transação de deleção abortada");
+        request.onerror = () => reject("Failed to delete thread messages");
+        tx.onerror = () => reject("Delete transaction failed");
+        tx.onabort = () => reject("Delete transaction was aborted");
     });
 }
 
@@ -209,7 +209,7 @@ export async function getMessage(messageId: string): Promise<mls.msg.MessagePerf
         const request = store.get(messageId);
 
         request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject("Erro ao buscar mensagem");
+        request.onerror = () => reject("Failed to fetch message");
     });
 }
 
@@ -248,7 +248,8 @@ export async function getMessagesByThreadId(
             cursor.continue();
         };
 
-        request.onerror = () => reject("Erro ao buscar mensagens por threadId com paginação");
+        request.onerror = () => reject("Failed to fetch paginated messages for the thread");
+
     });
 }
 
@@ -262,7 +263,8 @@ export async function getAllMessagesByThreadId(threadId: string): Promise<mls.ms
         const request = index.getAll(IDBKeyRange.only(threadId));
 
         request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject("Erro ao buscar mensagens por threadId");
+        request.onerror = () => reject("Failed to fetch messages by threadId");
+
     });
 }
 
@@ -288,7 +290,7 @@ async function deleteMessagesAndTasks(messages: mls.msg.MessagePerformanceCache[
             try {
                 await deleteTask(msg.taskId);
             } catch (err) {
-                console.warn(`Falha ao deletar task ${msg.taskId}:`, err);
+                console.warn(`Could not delete task ${msg.taskId}:`, err);
             }
         }
     }
@@ -301,8 +303,9 @@ export async function addOrUpdateTask(task: mls.msg.TaskData): Promise<void> {
         const store = tx.objectStore("tasks");
         store.put(task);
         tx.oncomplete = () => resolve();
-        tx.onerror = () => reject("Erro ao adicionar task");
-        tx.onabort = () => reject("Transação abortada");
+        tx.onerror = () => reject("Failed to add task");
+        tx.onabort = () => reject("Transaction was aborted");
+
     });
 }
 
@@ -314,7 +317,8 @@ export async function getTask(taskId: string): Promise<mls.msg.TaskData | undefi
     return new Promise((resolve, reject) => {
         const request = store.get(taskId);
         request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject("Erro ao buscar task");
+        request.onerror = () => reject("Failed to fetch task");
+
     });
 }
 
@@ -327,8 +331,9 @@ export async function deleteTask(taskId: string): Promise<void> {
         const request = store.delete(taskId);
 
         request.onsuccess = () => resolve();
-        request.onerror = () => reject("Erro ao deletar task");
-        tx.onabort = () => reject("Transação abortada");
+        request.onerror = () => reject("Failed to delete task");
+        tx.onabort = () => reject("Transaction was aborted");
+
     });
 }
 
@@ -339,7 +344,8 @@ export async function listThreads(): Promise<mls.msg.ThreadPerformanceCache[]> {
     return new Promise((resolve, reject) => {
         const request = store.getAll();
         request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject("Erro ao listar threads");
+        request.onerror = () => reject("Failed to list threads");
+
     });
 }
 
@@ -359,8 +365,9 @@ export async function addThread(thread: mls.msg.Thread): Promise<mls.msg.ThreadP
         const store = tx.objectStore("threads");
         store.put(threadCache);
         tx.oncomplete = () => resolve(threadCache);
-        tx.onerror = () => reject("Erro ao adicionar thread");
-        tx.onabort = () => reject("Transação abortada");
+        tx.onerror = () => reject("Failed to add thread");
+        tx.onabort = () => reject("Transaction was aborted");
+
     });
 }
 
@@ -378,17 +385,19 @@ export async function updateLastMessageReadTime(threadId: string, lastMessageRea
             let threadDb = request.result;
 
             if (!threadDb) {
-                reject(`Thread com ID ${threadId} não encontrada.`);
+                reject(`Thread not found (ID: ${threadId}).`);
                 return;
             }
 
             threadDb = { ...threadDb, lastMessageReadTime }
             const updateRequest = store.put(threadDb);
             updateRequest.onsuccess = () => resolve(threadDb);
-            updateRequest.onerror = () => reject("Erro ao atualizar a thread");
+            updateRequest.onerror = () => reject("Failed to update the thread");
+
         };
 
-        request.onerror = () => reject("Erro ao buscar a thread");
+        request.onerror = () => reject("Failed to fetch the thread");
+
     });
 }
 
@@ -411,7 +420,7 @@ export async function updateThread(
             let threadDb = request.result;
 
             if (!threadDb) {
-                reject(`Thread com ID ${threadId} não encontrada.`);
+                reject(`Thread not found (ID: ${threadId}).`);
                 return;
             }
 
@@ -422,10 +431,12 @@ export async function updateThread(
             if (lastSync !== undefined) threadDb.lastSync = lastSync;
             const updateRequest = store.put(threadDb);
             updateRequest.onsuccess = () => resolve(threadDb);
-            updateRequest.onerror = () => reject("Erro ao atualizar a thread");
+            updateRequest.onerror = () => reject("Failed to update the thread");
+
         };
 
-        request.onerror = () => reject("Erro ao buscar a thread");
+        request.onerror = () => reject("Failed to fetch the thread");
+
     });
 }
 
@@ -450,12 +461,13 @@ export async function updateThreads(threadsFromServer: mls.msg.Thread[]): Promis
                 store.put(threadCache);
             }
         } catch (err) {
-            reject(`Erro ao inserir threads: ${err}`);
+            reject(`Failed to insert threads: ${err}`);
         }
 
         tx.oncomplete = () => resolve();
-        tx.onerror = () => reject("Erro na transação de sincronização");
-        tx.onabort = () => reject("Transação de sincronização abortada");
+        tx.onerror = () => reject("Synchronization transaction failed");
+        tx.onabort = () => reject("Synchronization transaction was aborted");
+
     });
 }
 
@@ -468,7 +480,8 @@ export async function getThread(threadId: string): Promise<mls.msg.ThreadPerform
         const request = store.get(threadId);
 
         request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject("Erro ao buscar thread");
+        request.onerror = () => reject("Failed to fetch thread");
+
     });
 }
 
@@ -482,7 +495,8 @@ export async function getThreadByName(threadName: string): Promise<mls.msg.Threa
         const request = index.get(threadName);
 
         request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject("Erro ao buscar thread por nome");
+        request.onerror = () => reject("Failed to fetch thread by name");
+
     });
 }
 
@@ -495,7 +509,8 @@ export async function getAllThreads(): Promise<mls.msg.ThreadPerformanceCache[]>
         const request = store.getAll();
 
         request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject("Erro ao listar todas as threads");
+        request.onerror = () => reject("Failed to list all threads");
+
     });
 }
 
@@ -519,11 +534,13 @@ export async function cleanupThreads(validThreadIds: string[]): Promise<void> {
                 const request = store.delete(thread.threadId);
 
                 request.onsuccess = () => resolve();
-                request.onerror = () => reject("Erro ao deletar thread");
-                tx.onabort = () => reject("Transação abortada ao deletar thread");
+                request.onerror = () => reject("Failed to delete thread");
+                tx.onabort = () => reject("Transaction was aborted while deleting the thread");
+
             });
         } catch (err) {
-            console.warn(`Falha ao remover thread ${thread.threadId}:`, err);
+            console.warn(`Could not remove thread ${thread.threadId}:`, err);
+
         }
     }
 }
@@ -536,7 +553,8 @@ export async function listUsers(): Promise<mls.msg.User[]> {
     return new Promise((resolve, reject) => {
         const request = store.getAll();
         request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject("Erro ao listar usuários");
+        request.onerror = () => reject("Failed to list users");
+
     });
 }
 
@@ -547,8 +565,9 @@ export async function addUser(user: mls.msg.User): Promise<void> {
         const store = tx.objectStore("users");
         store.put(user);
         tx.oncomplete = () => resolve();
-        tx.onerror = () => reject("Erro ao adicionar usuário");
-        tx.onabort = () => reject("Transação de usuário abortada");
+        tx.onerror = () => reject("Failed to add user");
+        tx.onabort = () => reject("User transaction was aborted");
+
     });
 }
 
@@ -564,12 +583,13 @@ export async function updateUsers(usersFromServer: mls.msg.User[]): Promise<void
                 store.put(user);
             }
         } catch (err) {
-            reject(`Erro ao inserir usuários: ${err}`);
+            reject(`Failed to insert users: ${err}`);
         }
 
         tx.oncomplete = () => resolve();
-        tx.onerror = () => reject("Erro na transação de sincronização de usuários");
-        tx.onabort = () => reject("Transação de sincronização de usuários abortada");
+        tx.onerror = () => reject("User synchronization transaction failed");
+        tx.onabort = () => reject("User synchronization transaction was aborted");
+
     });
 }
 
@@ -581,7 +601,7 @@ export async function getUser(userId: string): Promise<mls.msg.User | undefined>
     return new Promise((resolve, reject) => {
         const request = store.get(userId);
         request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject("Erro ao buscar usuário");
+        request.onerror = () => reject("Failed to fetch user");
     });
 }
 
@@ -595,8 +615,9 @@ export async function addPooling(pooling: PoolingTask): Promise<void> {
         store.put(pooling);
 
         tx.oncomplete = () => resolve();
-        tx.onerror = () => reject("Erro ao adicionar pooling");
-        tx.onabort = () => reject("Transação abortada");
+        tx.onerror = () => reject("Failed to add pooling");
+        tx.onabort = () => reject("Transaction was aborted");
+
     });
 }
 
@@ -610,7 +631,7 @@ export async function deletePooling(taskId: string): Promise<void> {
         store.delete(taskId);
 
         tx.oncomplete = () => resolve();
-        tx.onerror = () => reject("Erro ao deletar pooling");
+        tx.onerror = () => reject("Failed to delete pooling");
     });
 }
 
@@ -624,7 +645,8 @@ export async function getPooling(taskId: string): Promise<PoolingTask | undefine
         const request = store.get(taskId);
 
         request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject("Erro ao buscar pooling");
+        request.onerror = () => reject("Failed to fetch pooling");
+
     });
 }
 
@@ -638,7 +660,8 @@ export async function listPoolings(): Promise<PoolingTask[]> {
         const request = store.getAll();
 
         request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject("Erro ao listar poolings");
+        request.onerror = () => reject("Failed to list poolings");
+
     });
 }
 
