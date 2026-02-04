@@ -39,7 +39,6 @@ import '/_102025_/l2/collabMessagesMoments.js';
 import '/_102025_/l2/collabMessagesSettings.js';
 import '/_102025_/l2/collabMessagesFindtask.js';
 
-
 /// **collab_i18n_start** 
 const message_pt = {
     loading: 'Carregando...',
@@ -260,7 +259,7 @@ export class ServiceCollabMessages extends ServiceBase {
             if (!task || !task.messageid_created) continue;
             const message = await getMessage(task.messageid_created);
             if (!message) continue;
-            const context: mls.msg.ExecutionContext = { message, task };
+            const context: mls.msg.ExecutionContext = { message, task, isTest: false };
             await continuePoolingTask(context);
         }
 
