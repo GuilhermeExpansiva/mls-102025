@@ -838,11 +838,12 @@ export class CollabMessagesChat extends StateLitElement {
 
 
     private renderArchivedThreads() {
-        if (this.filteredThreads.archived.length === 0) return html``;
+        if (this.filteredThreads.archived.length === 0) return html`${nothing}`;
         return html`        
             ${this.filteredThreads.archived.map((item) => {
 
             let threadAvatar = this.getThreadAvatar(item);
+            const unreadCount = item.thread.unreadCount || 0;
 
             function isWithinLastWeek(date: Date): boolean {
                 const now = new Date();
@@ -855,7 +856,7 @@ export class CollabMessagesChat extends StateLitElement {
 
             return html`
                 ${!isWithinLastWeek(item._lastMessageDateArchived.dateObject)
-                    ? html``
+                    ? html`${nothing}`
                     : html`
                         <li @click=${() => this.onThreadClick(item)} class="thread-item">
                             <div class="thread-item-avatar">
@@ -867,6 +868,7 @@ export class CollabMessagesChat extends StateLitElement {
                             <div class="thread-content">
                                 <div class="thread-item-header">
                                     <span class="thread-name">(${this.msg.archived}) ${item.thread.name || item.thread.threadId}</span>
+                                    ${unreadCount > 0 ? html`<span class="unread-count">*</span>` : nothing}
                                 </div>
                             </div>
                         </li>`
