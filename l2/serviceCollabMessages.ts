@@ -319,9 +319,7 @@ export class ServiceCollabMessages extends ServiceBase {
         if (this.userThreads[thread.threadId]) {
             this.userThreads[thread.threadId].thread = thread;
         } else {
-            if (!this.userPerfil) this.userPerfil = await this.getUser();
-            if (!this.userPerfil?.threads.find((item) => item === thread.threadId)) this.userPerfil?.threads.push(thread.threadId);
-            await this.updateThreads();
+            await this.updateUsersThread(thread);
         }
 
         if (this.groupSelected !== 'CONNECT') {
@@ -472,6 +470,26 @@ export class ServiceCollabMessages extends ServiceBase {
             updateUsers(threadInfo.users);
         }
 
+        this.isLoadingThread = false;
+        this.requestUpdate();
+
+    }
+
+    private async updateUsersThread(thread: mls.msg.Thread) {
+
+        if (!this.userPerfil?.userId) {
+            this.setError('Invalid userId');
+            return;
+        }
+
+        const userId = this.userPerfil.userId;
+        const threadInfo = await this.getThreadInfo(thread.threadId, userId);
+        this.userThreads[thread.threadId] = {
+            thread,
+            users: threadInfo.users
+        }
+        addThread(thread);
+        updateUsers(threadInfo.users);
         this.isLoadingThread = false;
         this.requestUpdate();
 
