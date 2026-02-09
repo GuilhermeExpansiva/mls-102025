@@ -115,7 +115,6 @@ export class ServiceCollabMessages extends ServiceBase {
             return;
         };
         this.activeTab = ETabs[index] as ITabType;
-        if (this.level === 7 && this.activeTab === 'APPS') return;
         saveLastTab(this.activeTab);
 
     }
@@ -163,10 +162,7 @@ export class ServiceCollabMessages extends ServiceBase {
 
     async connectedCallback() {
         super.connectedCallback();
-
-        if (this.level === 7) {
-            this.dataLocal.lastTab = 'APPS';
-        } else this.dataLocal.lastTab = loadLastTab() as ITabType;
+        this.dataLocal.lastTab = loadLastTab() as ITabType;
         this.setEvents();
     }
 
@@ -216,24 +212,19 @@ export class ServiceCollabMessages extends ServiceBase {
 
     private isFirstEnter: boolean = true;
     private configureByLevel() {
-        if (!this.menu || !this.menu.tabs) return;
-
-        if (this.level === 7 && this.lastLevel !== 7) {
-            this.changeDisplayMenu(true)
+        if (!this.menu || !this.menu.tabs || !this.menu.setTabActive) return;
+        this.changeDisplayMenu(this.level === 7);
+        if (this.isFirstEnter) {
+            this.isFirstEnter = false;
+            let lastActive = ETabs[loadLastTab() as ITabType];
+            lastActive = lastActive === ETabs.APPS && this.level !== 7 ? ETabs.CONNECT : lastActive;
+            this.menu.setTabActive(lastActive);
         }
 
-        if (this.lastLevel === 7 && this.level !== 7 && this.menu.setTabActive) {
-
-            this.changeDisplayMenu(false);
-
-            if (this.isFirstEnter) {
-                this.isFirstEnter = false;
-                this.menu.setTabActive(ETabs[loadLastTab() as ITabType])
-            }
-
-            else if (this.activeTab === 'APPS') this.menu.setTabActive(ETabs[loadLastTab() as ITabType])
-            else this.menu.setTabActive(ETabs[this.activeTab as ITabType]);
+        if (this.level !== 7 && this.activeTab === 'APPS') {
+            this.menu.setTabActive(ETabs.CONNECT)
         }
+
         this.lastLevel = this.level;
     }
 
@@ -336,7 +327,6 @@ export class ServiceCollabMessages extends ServiceBase {
     private removeEvents() {
         window.removeEventListener('thread-create', this.onThreadCreate);
         window.removeEventListener('thread-change', this.onThreadChange.bind(this));
-
         mls.events.removeEventListener([0, 1, 2, 3, 4, 5, 6, 7], ['collabMessages'] as any, this.onCollabEventsCollabMessages.bind(this));
     }
 
