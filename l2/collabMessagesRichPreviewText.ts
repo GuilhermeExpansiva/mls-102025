@@ -14,6 +14,7 @@ export type SlackToken =
     | { type: 'strike'; value: string }
     | { type: 'mention'; value: string; userId: string }
     | { type: 'channel'; value: string }
+    | { type: 'agent'; value: string }
     | { type: 'command'; value: string }
     | { type: 'help'; value: string }
     | { type: 'link'; text: string; url: string }
@@ -113,6 +114,8 @@ link em codigo \`https://google.com\`
 
 ?help2
 
+@@agent test
+
 `;
 
     render() {
@@ -136,6 +139,7 @@ link em codigo \`https://google.com\`
             case 'inline-code': return this.renderInlineCode(token);
             case 'code-block': return this.renderCodeBlock(token);
             case 'mention': return this.renderMention(token);
+            case 'agent': return this.renderAgent(token);
             case 'channel': return this.renderChannel(token);
             case 'command': return this.renderCommand(token);
             case 'help': return this.renderHelp(token);
@@ -151,10 +155,10 @@ link em codigo \`https://google.com\`
         const parts = token.value.split('\n');
         return html`
             ${parts.map((part, index) =>
-                    index === 0
-                        ? html`${part}`
-                        : html`<br />${part}`
-                )}
+            index === 0
+                ? html`${part}`
+                : html`<br />${part}`
+        )}
         `;
     }
 
@@ -193,6 +197,17 @@ link em codigo \`https://google.com\`
                 .text="${token.value}">
             </collab-messages-text-code-102025>
             </div>
+        `;
+    }
+
+    private renderAgent(token: { value: string }) {
+        return html`
+            <span
+            class="mention-agent"
+            data-agent="${token.value}"
+            >
+            @@${token.value}
+            </span>
         `;
     }
 
@@ -612,6 +627,26 @@ link em codigo \`https://google.com\`
                     }
                 }
 
+                
+                // agent @@agent
+                if (
+                    state === 'NORMAL' &&
+                    input[i] === '@' &&
+                    input[i + 1] === '@' &&
+                    isBoundary(input[i - 1])
+                ) {
+                    const match = input.slice(i + 2).match(/^[a-zA-Z0-9_-]+/);
+                    if (match) {
+                        flushText();
+                        tokens.push({
+                            type: 'agent',
+                            value: match[0],
+                        });
+                        i += match[0].length + 2;
+                        continue;
+                    }
+                }
+
                 // mention markdown [@Name](userId)
                 if (input[i] === '[' && input[i + 1] === '@') {
                     const closeText = input.indexOf(']', i + 2);
@@ -636,7 +671,6 @@ link em codigo \`https://google.com\`
                         continue;
                     }
                 }
-
 
                 // channel #
                 if (input[i] === '#' && isBoundary(input[i - 1])) {
