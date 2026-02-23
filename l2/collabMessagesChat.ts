@@ -29,7 +29,6 @@ import {
 } from '/_102025_/l2/collabMessagesIndexedDB.js';
 
 import {
-    loadChatPreferences,
     getBotsContext,
     registerToken,
     loadNotificationPreferences,
@@ -48,12 +47,13 @@ import '/_102025_/l2/collabMessagesUserModal.js';
 import '/_102025_/l2/collabMessagesThreadModal.js';
 import '/_102025_/l2/collabMessagesFilter.js';
 import '/_102025_/l2/collabMessagesAdd.js';
-
+import '/_102025_/l2/collabMessagesChatMessage.js';
 import '/_102025_/l2/collabMessagesRichPreviewText.js';
 
 
-import { IChatPreferences, AGENTDEFAULT } from '/_102025_/l2/collabMessagesHelper.js';
+import { IMessage, IThreadInfo, AGENTDEFAULT } from '/_102025_/l2/collabMessagesHelper.js';
 import { CollabMessagesPrompt } from '/_102025_/l2/collabMessagesPrompt.js';
+import { CollabMessagesChatMessage102025 } from '/_102025_/l2/collabMessagesChatMessage.js';
 import { IAgent } from '/_100554_/l2/aiAgentBase.js';
 import { StateLitElement } from '/_100554_/l2/stateLitElement.js';
 
@@ -118,14 +118,15 @@ export class CollabMessagesChat extends StateLitElement {
     @query('.new-messages-label') private unreadEl!: HTMLDivElement | undefined;
     @query('.chat-container') private messageContainer!: HTMLDivElement | undefined;
 
-    @state() userPreferenceChat?: IChatPreferences;
-    @state() isLoadingThread: boolean = false;
-    @state() filteredThreads: IFilteredThreadsByStatus = { active: [], archived: [], deleted: [], deleting: [] };
-    @state() isThreadError: boolean = false;
-    @state() threadErrorMsg: string = '';
-    @state() lastTopicFilter: string = '';
-    @state() welcomeMessage: string = '';
-    @state() usersAvaliables: mls.msg.User[] = [];
+    @state() private isLoadingThread: boolean = false;
+    @state() private filteredThreads: IFilteredThreadsByStatus = { active: [], archived: [], deleted: [], deleting: [] };
+    @state() private isThreadError: boolean = false;
+    @state() private threadErrorMsg: string = '';
+    @state() private lastTopicFilter: string = '';
+    @state() private welcomeMessage: string = '';
+    @state() private usersAvaliables: mls.msg.User[] = [];
+    @state() private openedReactionMessageId?: string;
+    @state() private reactionPickerTarget?: HTMLElement;
 
     @property() group: 'CONNECT' | 'APPS' | 'DOCS' | 'CRM' = 'CONNECT';
     @property() userId: string | undefined;
@@ -199,6 +200,11 @@ export class CollabMessagesChat extends StateLitElement {
         }
     }
 
+    connectedCallback() {
+        super.connectedCallback();
+        document.addEventListener('click', this.onDocumentClick);
+    }
+
     disconnectedCallback() {
         super.disconnectedCallback();
         window.removeEventListener('task-change', this.onTaskChange);
@@ -206,6 +212,7 @@ export class CollabMessagesChat extends StateLitElement {
         window.removeEventListener('thread-change', this.onThreadChange.bind(this));
         window.removeEventListener('message-send', this.onMessageSend);
         document.removeEventListener("visibilitychange", this.onVisibilityChange.bind(this));
+        document.removeEventListener('click', this.onDocumentClick);
 
     }
 
@@ -287,6 +294,7 @@ export class CollabMessagesChat extends StateLitElement {
 
     private renderChatMessages() {
         if (!this.actualThread) return html``;
+
         if (this.welcomeMessage && !['deleting', 'deleted', 'archived'].includes(this.actualThread?.thread.status)) {
             return this.renderWelcomeMessage();
         }
@@ -308,131 +316,52 @@ export class CollabMessagesChat extends StateLitElement {
             `
         }
 
-        this.userPreferenceChat = loadChatPreferences();
         const sortedEntries = Object.entries(this.actualMessagesParsed)
             .map(([date, value]) => [date.trim(), value])
             .sort(([a], [b]) => new Date(a as string).getTime() - new Date(b as string).getTime());
+
         const sortedObj: IMessageGrouped = Object.fromEntries(sortedEntries);
         let nextNeedShowLabel: boolean = false;
+
         return html`
             ${this.renderTopics()}
             <div
                 @scroll=${this.onChatScroll} class="chat-container"
                 @copy=${this.onCopyChat}
             >
-            ${Object.keys(sortedObj).map((key, index) => {
+                ${Object.keys(sortedObj).map((key, index) => {
             const threadMessages = sortedObj[key];
             const messageTime = this.parseLocalDate(key);
             const displayDate = this.formatMessageDate(messageTime.dateObject);
             return html`
-                <div class="message-time">${displayDate}</div>
-                    ${threadMessages.map((message) => {
-                const dateFormated = formatTimestamp(message.createAt);
-                const userToFind = [
-                    ...this.usersAvaliables,
-                    ...(this.actualThread?.users || [])
-                ].filter(
-                    (user, index, self) =>
-                        index === self.findIndex(u => u.userId === user.userId)
-                );
-
-                const userName = userToFind.find((user) => user.userId === message.senderId)?.name || message.senderId;
-                const userAvatar = userToFind.find((user) => user.userId === message.senderId)?.avatar_url || '';
-                const cls = message.senderId === this.userId ? 'user' : 'system';
-                const isSame = message.isSame;
-
+                    <div class="message-time">${displayDate}</div>
+                        ${threadMessages.map((message) => {
                 if (this.lastMessageReaded === message.createAt && this.unreadCountInSelectedThread) nextNeedShowLabel = true;
                 else nextNeedShowLabel = false;
-
-                const titleTranslated = this.getTitleMessageTranslated(message);
-
                 return html`
-                            <div class="message ${cls} ${isSame ? 'same' : ''}">
-                                <div class="message-group">
-                                    <div class="message-row">
-                                        <div class="message-card ${cls} ${isSame ? 'same' : ''}">
-                                            ${!isSame ? html`<div class="message-title">@${userName}</div>` : ``}
-                                            ${this.renderMessageByLanguage(message)}
-                                            ${message.isLoading ? html`<span class="loader"></span>` : ''}
-                                            ${message.isFailed ? html`<div class="failed">
-                                                <div>
-                                                    <span>${collab_circle_exclamation}</span>
-                                                    <small>${this.msg.msgNotSend}</small>
-                                                </div>
-                                                <small>${message.isFailedError}</small>
-                                            </div>`: ''}
-                                            ${message.taskId ? html`
-                                                <div class="message-ai">
-                                                    <collab-messages-task-102025
-                                                        messageId=${message.createAt}
-                                                        .context= ${message.context}
-                                                        lastChanged= ${message.lastChanged}
-                                                        taskId=${message.taskId}
-                                                        threadId=${this.actualThread?.thread.threadId}
-                                                        userId=${this.userId}
-                                                        title=${titleTranslated}
-                                                        status=${message.taskStatus}
-                                                        @taskclick=${() => this.onTaskClick(message?.taskId || '', message.createAt, message.threadId, message)}
-                                                    >
-                                                    </collab-messages-task-102025>
-                                                </div> `: html``}
-                                            ${this.renderMessageResultByLanguage(message)}
-                                            ${this.renderMessageFooterResult(message)}
-                                            <div class="message-footer">${dateFormated?.timeShort}</div>
-                                        </div>
-                                        ${cls === 'system' && !isSame ? html`<collab-messages-avatar-102025 avatar=${userAvatar}></collab-messages-avatar-102025>` : ''}
-                                    </div>
-                                </div>
-                            </div>
-                            ${nextNeedShowLabel ? html`<div class="new-messages-label">${this.msg.newMessages}</div>` : ''}
-                            `
+                                <collab-messages-chat-message-102025
+                                    .message=${message}
+                                    .allThreads=${this.allThreads}
+                                    .actualThread=${this.actualThread}
+                                    .usersAvaliables=${this.usersAvaliables}
+                                    .userId=${this.userId}
+                                    .onTaskClick=${this.onTaskClick.bind(this)}
+                                ></collab-messages-chat-message-102025>
+                                ${nextNeedShowLabel ? html`<div class="new-messages-label">${this.msg.newMessages}</div>` : ''}`
             })}`
         })}
-                ${this.isLoadingMessages ? html`<div class="unread-messages">Loading messages...</div>` : html``}
-                ${this.isThreadError ? html`<div class="error-messages">${this.threadErrorMsg}</div>` : html``}
-
-            </div>
-        ${this.renderPrompt()}`
+                        ${this.isLoadingMessages ? html`<div class="unread-messages">Loading messages...</div>` : html``}
+                        ${this.isThreadError ? html`<div class="error-messages">${this.threadErrorMsg}</div>` : html``}
+                    </div>
+                ${this.renderPrompt()}`
     }
 
     private renderWelcomeMessage() {
-
         return html`
             <div class="welcome-message">
                 <p>${this.welcomeMessage}</p>
                 <button @click=${() => { this.welcomeMessage = ''; }}>${this.msg.btnNext}</button>       
             </div>`
-    }
-
-    private renderMessageFooterResult(message: mls.msg.MessagePerformanceCache) {
-
-        if (!message.footers || message.footers.length === 0) return html``;
-        return html`<div class="message-result">
-            ${message.footers?.map((footer) => {
-            const content = footer.lines.join('\n').trim();
-            if (!content) return html``;
-            return html`
-                <div class="message-result-text">
-                    <b>${footer.title?.trim()}</b>
-                    <div>
-                        ${this.renderCollabMessagesRichPreview(footer.lines.join('\n').trim())}                    
-                    </div>
-                </div>`
-        })}
-        </div>`
-
-    }
-
-    private renderCollabMessagesRichPreview(text: string) {
-
-        return html`
-        <collab-messages-rich-preview-text-102025 
-            @mention-hover=${this.onMentionHover}
-            @channel-hover=${this.onChannelHover}
-            .allUsers=${this.usersAvaliables} 
-            .allThreads=${this.allThreads}
-            text="${text}"
-        ></collab-messages-rich-preview-text-102025>`
     }
 
     private renderTopics() {
@@ -461,159 +390,12 @@ export class CollabMessagesChat extends StateLitElement {
 
     }
 
-    private async onMentionHover(ev: CustomEvent) {
-
-        this.removeAllUserModal();
-        if (!ev.detail || !ev.detail.userId || !ev.detail.element) return;
-        const actualUserModal = this.usersAvaliables.find((user) => user.userId === ev.detail.userId);
-        if (!actualUserModal) return;
-        const rects = (ev.detail.element as HTMLElement).getBoundingClientRect();
-        const modal = document.createElement('collab-messages-user-modal-102025');
-        (modal as any).user = actualUserModal;
-        (modal as any).setAttribute('actualUserId', this.userId);
-        this.appendChild(modal);
-        await (modal as LitElement).updateComplete;
-        const rectsModal = modal.getBoundingClientRect();
-        modal.style.top = (rects.top - rectsModal.height - rects.height - 70) + 'px';
-        modal.style.left = '20px';
-
-    }
-
-    private async onChannelHover(ev: CustomEvent) {
-
-        this.removeAllUserModal();
-        if (!ev.detail || !ev.detail.threadId || !ev.detail.element) return;
-        const actualThreadModal = this.allThreads.find((thread) => thread.threadId === `${ev.detail.threadId}`);
-        if (!actualThreadModal) return;
-        const rects = (ev.detail.element as HTMLElement).getBoundingClientRect();
-        const modal = document.createElement('collab-messages-thread-modal-102025');
-        (modal as any).thread = actualThreadModal;
-        this.appendChild(modal);
-        await (modal as LitElement).updateComplete;
-        const rectsModal = modal.getBoundingClientRect();
-        modal.style.top = (rects.top - rectsModal.height - rects.height - 70) + 'px';
-        modal.style.left = '20px';
-
-    }
-
-    private removeAllUserModal() {
+    private removeAllModal() {
         const all = this.querySelectorAll('collab-messages-user-modal-102025');
-        all.forEach((item) => item.remove());
+        const all2 = this.querySelectorAll('collab-messages-thread-modal-102025');
+        [...all, ...all2].forEach((item) => item.remove());
     }
 
-    private removeAllChannelModal() {
-        const all = this.querySelectorAll('collab-messages-thread-modal-102025');
-        all.forEach((item) => item.remove());
-    }
-
-
-    private renderMessageResultByLanguage(message: mls.msg.Message) {
-
-        if (!message.taskResults || message.taskResults.length === 0 || message.taskStatus !== 'done') return html``;
-        const mode = this.userPreferenceChat?.translationMode || 'icon';
-        if (!this.userPreferenceChat || mode === 'none') {
-            return html`<div class="message-content">${message.taskResults[0]}</div>`
-        }
-        const response = message.taskResults[0];
-        const { language } = this.userPreferenceChat;
-        const messageByLanguagePref = message.taskResultsTranslated ? message.taskResultsTranslated[language] : '';
-        const isSameLanguege = language === message.taskResultsTranslated?.language_detected;
-
-        switch (mode) {
-            case 'icon':
-                return html`<div class="message-content">${messageByLanguagePref || response} ${!isSameLanguege ? collab_translate : ''}</div>`;
-            case 'text':
-                return html`
-                <div class="message-content">${messageByLanguagePref || response}</div>
-                ${!isSameLanguege ? html`<small class="message-content translate">${response}</small>` : ''}`;
-            case 'iconText':
-                return html`<div class="message-content">${messageByLanguagePref || response} ${!isSameLanguege ? collab_translate : ''}</div>
-                ${!isSameLanguege ? html`<small class="message-content translate">${response}</small>` : ''}`;
-            case 'trace':
-                return html`<div class="message-content trace">
-                <div><b>[LanguageDetected: ${message.language_detected}]</b> ${response}</div>
-                ${Object.keys(message.taskResultsTranslated || {}).map((key) => {
-                    if (key === 'language_detected') return ''
-                    if (key === message.taskResultsTranslated?.language_detected) return ''
-                    return html`<div><b>[${key}]</b> ${message.taskResultsTranslated ? message.taskResultsTranslated[key] : ''}</div>`
-                })}
-                </div>`
-            default:
-                return null;
-        }
-    }
-
-    private getTitleMessageTranslated(message: mls.msg.Message) {
-        const mode = this.userPreferenceChat?.translationMode || 'icon';
-        if (!this.userPreferenceChat || mode === 'none' || !message.taskTitleTranslated) {
-            return message.taskTitle;
-        }
-        const { language } = this.userPreferenceChat;
-        const titleByLanguagePref = message.taskTitleTranslated ? (message.taskTitleTranslated[language] ? message.taskTitleTranslated[language] : message.taskTitle) : message.taskTitle;
-        return titleByLanguagePref;
-    }
-
-    private renderMessageByLanguage(message: mls.msg.Message) {
-        const mode = this.userPreferenceChat?.translationMode || 'icon';
-        if (!this.userPreferenceChat || mode === 'none' || !message.translations) {
-            return html`
-            <div class="message-content">
-                ${this.renderCollabMessagesRichPreview(message.content)} 
-            </div>`
-        }
-        const { language } = this.userPreferenceChat;
-        const messageByLanguagePref = message.translations ? message.translations[language] : '';
-        const isSameLanguege = language === message.language_detected;
-        switch (mode) {
-            case 'icon':
-                return html`
-                <div class="message-content">
-                    ${this.renderCollabMessagesRichPreview(messageByLanguagePref || message.content)} 
-                     ${!isSameLanguege ? collab_translate : ''}
-                </div>`;
-            case 'text':
-                return html`
-                <div class="message-content">
-                    ${this.renderCollabMessagesRichPreview(messageByLanguagePref || message.content)}   
-                </div>
-                ${!isSameLanguege ?
-                        html`<small class="message-content translate">
-                            ${this.renderCollabMessagesRichPreview(message.content)}   
-                        </small>`
-                        : ''}`;
-            case 'iconText':
-                return html`
-                    <div class="message-content">
-                        ${this.renderCollabMessagesRichPreview(messageByLanguagePref || message.content)}   
-                        ${!isSameLanguege ? collab_translate : ''}
-                    </div>
-                ${!isSameLanguege ?
-                        html`<small class="message-content translate">
-                        ${this.renderCollabMessagesRichPreview(message.content)}    
-                    </small>`
-                        : ''
-                    }`;
-            case 'trace':
-                return html`
-                <div class="message-content trace">
-                    <div>
-                        <b>[LanguageDetected: ${message.language_detected}]</b>
-                        ${this.renderCollabMessagesRichPreview(message.content)}   
-                    </div>
-                    ${Object.keys(message.translations).map((key) => {
-                    if (key === 'language_detected') return ''
-                    if (key === message.language_detected) return ''
-                    return html`
-                            <div>
-                                <b>[${key}]</b>
-                                ${this.renderCollabMessagesRichPreview(message.translations ? message.translations[key] : '')}                        
-                            </div>`
-                })}
-                </div>`
-            default:
-                return null;
-        }
-    }
 
     private renderPrompt() {
         return html`
@@ -1046,7 +828,7 @@ export class CollabMessagesChat extends StateLitElement {
 
     private async onChatScroll(e: Event) {
 
-        this.removeAllUserModal();
+        this.removeAllModal();
         if (this.isChangeTopics) {
             this.isChangeTopics = false;
             return;
@@ -1719,8 +1501,6 @@ export class CollabMessagesChat extends StateLitElement {
         }
 
         const footerData: IMessageFooter[] = [];
-
-
         for await (let item of outputs || []) {
 
             const footerItem: IMessageFooter = {
@@ -1747,7 +1527,6 @@ export class CollabMessagesChat extends StateLitElement {
             footerData.push(footerItem);
 
         }
-
 
         const alreadyExist = this.actualMessages.find(item =>
             item.content === oldMessage.content &&
@@ -1941,6 +1720,14 @@ export class CollabMessagesChat extends StateLitElement {
         }
     }
 
+    private onDocumentClick = () => {
+        const all = Array.from(this.querySelectorAll('collab-messages-chat-message-102025')) as CollabMessagesChatMessage102025[]
+        all.forEach((item: CollabMessagesChatMessage102025) => {
+            item.openedReactionMessageId = undefined;
+            item.reactionPickerTarget = undefined;
+        });
+    };
+
     private async verifyChatScroll() {
         if (this.messageContainer && (this.isSystemChangeScroll)) {
             await this.updateComplete;
@@ -1955,6 +1742,12 @@ export class CollabMessagesChat extends StateLitElement {
 
     private async waitingForRenderCodesWebComponents() {
         if (!this.messageContainer) return;
+        const allMessages = Array.from(this.messageContainer.querySelectorAll('collab-messages-chat-message-102025'));
+        await Promise.all(
+            Array.from(allMessages)
+                .map(el => (el as LitElement).updateComplete)
+        );
+
         const allCodes = Array.from(this.messageContainer.querySelectorAll('collab-messages-text-code-102025'));
         await Promise.all(
             Array.from(allCodes)
@@ -1962,23 +1755,6 @@ export class CollabMessagesChat extends StateLitElement {
         );
     }
 
-}
-
-interface IThreadInfo {
-    thread: mls.msg.ThreadPerformanceCache,
-    threadsPending?: string[],
-    users: mls.msg.User[],
-    hasMore?: boolean | undefined,
-    messages?: mls.msg.Message[] | undefined
-}
-
-interface IMessage extends mls.msg.MessagePerformanceCache {
-    context?: mls.msg.ExecutionContext,
-    lastChanged?: number,
-    isSame?: boolean,
-    isLoading?: boolean,
-    isFailed?: boolean,
-    isFailedError?: string,
 }
 
 interface IMessageFooter {

@@ -72,7 +72,7 @@ export async function addMessage(threadId: string, messageContent: string, conte
 
     const agentName = extractAgentName(messageContent) || AGENTDEFAULT;
     const moduleAgent = await loadAgent(agentName);
-    if(!moduleAgent) throw new Error('Invalid Agent')
+    if (!moduleAgent) throw new Error('Invalid Agent')
     await executeBeforePrompt(moduleAgent, context);
     return context;
 
@@ -397,6 +397,27 @@ export interface ICollabMessageEvent {
     type: 'thread-open',
     threadId?: string,
     taskId?: string,
-
 }
+
+export interface IMessage extends mls.msg.MessagePerformanceCache {
+    context?: mls.msg.ExecutionContext,
+    lastChanged?: number,
+    isSame?: boolean,
+    isLoading?: boolean,
+    isFailed?: boolean,
+    isFailedError?: string,
+    reactions?: MessageReactions;
+}
+
+export interface IThreadInfo {
+    thread: mls.msg.ThreadPerformanceCache,
+    threadsPending?: string[],
+    users: mls.msg.User[],
+    hasMore?: boolean | undefined,
+    messages?: mls.msg.Message[] | undefined
+}
+
+
+export type MessageReactions = Record<string, string[]>;
+
 
