@@ -1,11 +1,11 @@
-/// <mls fileReference="_102025_/l2/collabMessagesHelper.ts" enhancement="_blank" />
+/// <mls fileReference="_102025_/l2/collabMessagesHelper.defs.ts" enhancement="_blank" />
 
 // Do not change – automatically generated code. 
 
 export const asis: mls.defs.AsIs = {
   "meta": {
     "fileReference": "_102025_/l2/collabMessagesHelper.ts",
-    "componentType": "organism",
+    "componentType": "tool",
     "componentScope": "appFrontEnd"
   },
   "references": {
@@ -63,44 +63,39 @@ export const asis: mls.defs.AsIs = {
       }
     ]
   },
-  "codeInsights": {
-    "deadCodeBlocks": [
-      "checkThreadAlreadyExist function validates userId but does not implement thread existence logic"
-    ],
-    "i18nWarnings": [
-      "Console error messages in Portuguese: 'Erro ao salvar no localStorage' and 'Erro ao carregar do localStorage'"
-    ]
-  },
   "asIs": {
     "semantic": {
-      "generalDescription": "Helper module for collaborative messaging features including thread management, message handling with AI agent integration, and notification preferences",
+      "generalDescription": "Helper module for collaborative messaging features including FCM token registration, message handling with agent integration, thread management, and local storage persistence for chat preferences and notification settings",
       "businessCapabilities": [
-        "Send messages to threads with optional AI bot invocation via @@ commands",
-        "Create group and direct message threads",
-        "Manage FCM push notification registration and tokens",
-        "Persist chat preferences including language and translation mode",
-        "Manage notification preferences including audio and permission status",
-        "Retrieve and manage user identification",
-        "Integrate with AI agents for bot message handling"
+        "Register FCM notification tokens",
+        "Send messages with optional bot context",
+        "Create and manage chat threads",
+        "Handle direct message threads",
+        "Persist chat preferences to localStorage",
+        "Manage notification preferences and audio settings",
+        "Load and migrate legacy localStorage data"
       ],
       "technicalCapabilities": [
-        "LocalStorage CRUD operations for chat data persistence",
-        "FCM token registration and device ID management",
-        "AI agent loading and execution orchestration",
-        "Thread existence validation and DM thread lookup by users",
-        "Migration of legacy localStorage data formats",
-        "Temporary context generation for bot interactions"
+        "Integrate with AI agents for message processing",
+        "Interact with IndexedDB for thread storage",
+        "Call messaging API endpoints",
+        "Generate cryptographically secure device IDs",
+        "Extract agent names from message prefixes",
+        "Merge bot context variables"
       ],
       "implementedFeatures": [
-        "registerToken: FCM token registration with device ID generation",
-        "addMessage: Message sending with @@bot command parsing and agent execution",
-        "createThread: Group thread creation with API integration",
-        "createThreadDM: Direct message thread creation with user addition",
-        "getDmThreadByUsers: Lookup existing DM threads between two users",
-        "Notification preferences management including audio, permission, and last alert time",
-        "Chat preferences persistence including language, translation mode, and thread maintenance",
-        "User ID management with legacy data migration",
-        "Local storage abstraction with JSON serialization"
+        "FCM token registration with device ID generation",
+        "Message sending with bot context support",
+        "Agent name extraction from @@ prefixed messages",
+        "Thread creation for groups and DMs",
+        "DM thread deduplication check",
+        "LocalStorage persistence for preferences",
+        "Legacy data migration from old keys",
+        "Notification preference management",
+        "Audio notification toggle",
+        "Last tab persistence",
+        "User ID management",
+        "Default chat preferences loading"
       ]
     }
   }

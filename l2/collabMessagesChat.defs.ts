@@ -17,8 +17,8 @@ export const asis: mls.defs.AsIs = {
   "references": {
     "webComponents": [
       "collab-messages-prompt-102025",
-      "collab-messages-task-102025",
       "collab-messages-task-info-102025",
+      "collab-messages-task-102025",
       "collab-messages-topics-102025",
       "collab-messages-avatar-102025",
       "collab-messages-thread-details-102025",
@@ -26,6 +26,7 @@ export const asis: mls.defs.AsIs = {
       "collab-messages-thread-modal-102025",
       "collab-messages-filter-102025",
       "collab-messages-add-102025",
+      "collab-messages-chat-message-102025",
       "collab-messages-rich-preview-text-102025",
       "collab-messages-text-code-102025"
     ],
@@ -176,10 +177,6 @@ export const asis: mls.defs.AsIs = {
         "ref": "/_102025_/l2/collabMessagesHelper.js",
         "dependencies": [
           {
-            "name": "loadChatPreferences",
-            "type": "function"
-          },
-          {
             "name": "getBotsContext",
             "type": "function"
           },
@@ -200,7 +197,11 @@ export const asis: mls.defs.AsIs = {
             "type": "constant"
           },
           {
-            "name": "IChatPreferences",
+            "name": "IMessage",
+            "type": "interface"
+          },
+          {
+            "name": "IThreadInfo",
             "type": "interface"
           },
           {
@@ -214,6 +215,15 @@ export const asis: mls.defs.AsIs = {
         "dependencies": [
           {
             "name": "CollabMessagesPrompt",
+            "type": "class"
+          }
+        ]
+      },
+      {
+        "ref": "/_102025_/l2/collabMessagesChatMessage.js",
+        "dependencies": [
+          {
+            "name": "CollabMessagesChatMessage102025",
             "type": "class"
           }
         ]
@@ -235,127 +245,52 @@ export const asis: mls.defs.AsIs = {
             "type": "class"
           }
         ]
-      },
-      {
-        "ref": "lit",
-        "dependencies": [
-          {
-            "name": "html",
-            "type": "function"
-          },
-          {
-            "name": "LitElement",
-            "type": "class"
-          },
-          {
-            "name": "unsafeHTML",
-            "type": "function"
-          },
-          {
-            "name": "nothing",
-            "type": "constant"
-          }
-        ]
-      },
-      {
-        "ref": "lit/decorators.js",
-        "dependencies": [
-          {
-            "name": "customElement",
-            "type": "function"
-          },
-          {
-            "name": "property",
-            "type": "function"
-          },
-          {
-            "name": "state",
-            "type": "function"
-          },
-          {
-            "name": "query",
-            "type": "function"
-          }
-        ]
-      },
-      {
-        "ref": "/_102025_/l2/collabMessagesTaskInfo.js"
-      },
-      {
-        "ref": "/_102025_/l2/collabMessagesTask.js"
-      },
-      {
-        "ref": "/_102025_/l2/collabMessagesTopics.js"
-      },
-      {
-        "ref": "/_102025_/l2/collabMessagesAvatar.js"
-      },
-      {
-        "ref": "/_102025_/l2/collabMessagesThreadDetails.js"
-      },
-      {
-        "ref": "/_102025_/l2/collabMessagesUserModal.js"
-      },
-      {
-        "ref": "/_102025_/l2/collabMessagesThreadModal.js"
-      },
-      {
-        "ref": "/_102025_/l2/collabMessagesFilter.js"
-      },
-      {
-        "ref": "/_102025_/l2/collabMessagesAdd.js"
-      },
-      {
-        "ref": "/_102025_/l2/collabMessagesRichPreviewText.js"
       }
     ]
   },
   "asIs": {
     "semantic": {
-      "generalDescription": "Main chat interface component for Collab Messages system supporting real-time messaging, AI task integration, thread management, and multi-language support.",
+      "generalDescription": "Chat interface component for Collab Messages system with thread management, message rendering, and AI agent integration",
       "businessCapabilities": [
-        "Real-time messaging between users",
-        "Thread-based conversation management",
-        "AI agent task execution and monitoring",
-        "Message translation and localization",
-        "User mentions and channel references",
-        "Thread archiving and deletion workflows",
-        "Notification management",
-        "Direct messaging support",
-        "Message filtering by topics"
+        "Display and manage chat threads with status filtering (active, archived, deleting, deleted)",
+        "Send and receive messages with real-time updates",
+        "Handle AI agent interactions with special mention syntax",
+        "Manage thread participants and thread details",
+        "Support message threading with replies and reactions",
+        "Display task information linked to messages",
+        "Handle notification badges and unread message counts",
+        "Support message search and filtering by topics",
+        "Manage thread lifecycle (archive, delete, restore)",
+        "Support direct message threads with user avatars"
       ],
       "technicalCapabilities": [
-        "LitElement-based web component architecture",
-        "IndexedDB integration for offline message storage",
-        "RESTful API integration for message synchronization",
-        "Event-driven architecture with custom events",
-        "Infinite scroll pagination for message history",
-        "Dynamic view rendering based on active scenery state",
-        "Rich text preview with mention hover effects",
-        "Multi-language i18n support",
-        "Clipboard operations for chat content"
+        "LitElement-based web component with reactive state management",
+        "IndexedDB integration for local message caching and offline support",
+        "Server API integration for message synchronization (mls.api.msgGetMessagesAfter, mls.api.msgGetMessagesBefore, mls.api.msgAddMessage, mls.api.msgGetThreadUpdate, mls.api.msgGetTaskUpdate)",
+        "AI agent orchestration with dynamic agent loading and execution",
+        "Custom event handling for task changes, thread changes, and message sends",
+        "Scroll-based pagination for message history (infinite scroll)",
+        "Clipboard integration with custom copy formatting for chat content",
+        "Internationalization support with English and Portuguese",
+        "Responsive UI with mobile-friendly design",
+        "Web Components composition pattern for modular UI"
       ],
       "implementedFeatures": [
-        "Thread list view with prefix-based grouping",
-        "Chat detail view with chronological message grouping",
-        "Message input with autocomplete for mentions and agents",
-        "Task integration and monitoring within chat",
-        "Thread status management (active, archived, deleting, deleted)",
-        "Real-time thread search and filtering",
+        "Thread list view with grouping by prefix and status",
+        "Chat message view with date grouping and sender consolidation",
+        "Message prompt with @ mentions and @@ agent mentions",
+        "Topic filtering for messages",
+        "Thread search/filter functionality",
+        "Task detail view integration",
+        "Thread detail configuration view",
+        "Thread creation view",
         "Welcome message display for new threads",
-        "Multiple message translation display modes",
-        "Copy-paste functionality preserving message metadata",
-        "Notification badge and favicon management",
-        "User and thread modal previews on hover",
-        "Message pagination and lazy loading"
-      ],
-      "constraints": [
-        "Requires valid userId for all API operations",
-        "Dependent on mls.api backend services",
-        "Limited to specific module groups (CONNECT, APPS, DOCS, CRM)",
-        "Requires child web components to be loaded",
-        "Browser IndexedDB support required for offline functionality",
-        "Scroll position management for UX continuity"
+        "Message status indicators (failed, loading, sent)",
+        "Unread message badge and scroll-to-unread behavior",
+        "Archive/Delete thread status display with date formatting",
+        "Copy-to-clipboard with formatted message extraction",
+        "Notification token registration for push notifications",
+        "Background thread synchronization"
       ]
     }
   }

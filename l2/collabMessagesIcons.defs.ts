@@ -1,12 +1,12 @@
-/// <mls fileReference="_102025_/l2/collabMessagesIcons.ts" enhancement="_blank" />
+/// <mls fileReference="_102025_/l2/collabMessagesIcons.defs.ts" enhancement="_blank" />
 
 // Do not change – automatically generated code. 
 
 export const asis: mls.defs.AsIs = {
   "meta": {
     "fileReference": "_102025_/l2/collabMessagesIcons.ts",
-    "componentType": "tool",
-    "componentScope": "editor"
+    "componentType": "molecule",
+    "componentScope": "appFrontEnd"
   },
   "references": {
     "imports": [
@@ -15,7 +15,8 @@ export const asis: mls.defs.AsIs = {
         "dependencies": [
           {
             "name": "svg",
-            "type": "function"
+            "type": "function",
+            "purpose": "SVG template literal function for creating lit SVG templates"
           }
         ]
       }
@@ -23,41 +24,48 @@ export const asis: mls.defs.AsIs = {
   },
   "asIs": {
     "semantic": {
-      "generalDescription": "Collection of SVG icon definitions exported as constants using Lit",
+      "generalDescription": "Collection of SVG icon constants for messaging and UI components using lit-html",
       "businessCapabilities": [],
       "technicalCapabilities": [
-        "Lit SVG template literal exports"
+        "SVG icon rendering",
+        "lit-html template literals",
+        "Icon library management"
       ],
       "implementedFeatures": [
-        "collab_message",
-        "collab_chevron_down",
-        "collab_chevron_right",
-        "collab_clock_static",
-        "collab_users",
-        "collab_user",
-        "collab_magnifying_glass",
-        "collab_arrow_up_long",
-        "collab_minus",
-        "collab_ban",
-        "collab_dot",
-        "collab_bell",
-        "collab_money",
-        "collab_pause",
-        "collab_clock",
-        "collab_check",
-        "collab_bug_x12",
-        "collab_play",
-        "collab_bug",
-        "collab_chevron_left",
-        "collab_gear",
-        "collab_translate",
-        "collab_circle_exclamation",
-        "collab_plus",
-        "collab_folder_tree",
-        "collab_triangle_exclamation",
-        "collab_bell_slash",
-        "collab_xmark",
-        "collab_spinner_clock"
+        "Message icon",
+        "Reply icon",
+        "Copy icon",
+        "Edit icon",
+        "Delete icon",
+        "Smile/emoji icon",
+        "Chevron down icon",
+        "Chevron right icon",
+        "Clock static icon",
+        "Users icon",
+        "User icon",
+        "Magnifying glass icon",
+        "Arrow up long icon",
+        "Minus icon",
+        "Ban icon",
+        "Dot icon",
+        "Bell icon",
+        "Money icon",
+        "Pause icon",
+        "Animated clock spinner icon",
+        "Check icon",
+        "Bug icon (12px)",
+        "Play icon",
+        "Bug icon (16px)",
+        "Chevron left icon",
+        "Gear/settings icon",
+        "Translate icon",
+        "Circle exclamation icon",
+        "Plus icon",
+        "Folder tree icon",
+        "Triangle exclamation icon",
+        "Bell slash icon",
+        "Xmark icon",
+        "Spinner clock icon"
       ]
     }
   }
