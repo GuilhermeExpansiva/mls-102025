@@ -41,8 +41,7 @@ export class CollabMessagesChatMessage102025 extends StateLitElement {
 
     public onTaskClick?: Function;
     private msg: MessageType = messages['en'];
-    // private readonly reactionEmojis = ['👍', '😂', '❤️', '😮', '😢', '😡'];
-
+    
     private readonly reactionEmojis: Record<string, string> = {
         thumbs_up: '👍',
         laugh: '😂',

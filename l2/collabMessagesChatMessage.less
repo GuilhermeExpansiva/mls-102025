@@ -182,7 +182,10 @@ collab-messages-chat-message-102025 {
         position: absolute;
         bottom: -15px;
         right: 10px;
-        box-shadow: 0 1px #00000012, 0 0 3px #0000000a;
+
+        .active {
+            box-shadow: 0 1px #00000012, 0 0 3px #0000000a;
+        }
     }
 
     .reaction {
@@ -246,14 +249,6 @@ collab-messages-chat-message-102025 {
         left: 10px;
     }
 
-
-    .reaction-picker-item2 {
-        font-size: 18px;
-        background: none;
-        border: none;
-        cursor: pointer;
-        transition: transform 120ms ease;
-    }
 
     .reaction-picker-item {
         font-size: 18px;
