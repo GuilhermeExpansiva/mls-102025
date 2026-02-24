@@ -2,7 +2,7 @@
 
 import { html, nothing, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { collab_translate, collab_circle_exclamation } from '/_102025_/l2/collabMessagesIcons.js';
+import { collab_translate, collab_circle_exclamation, collab_smile } from '/_102025_/l2/collabMessagesIcons.js';
 import { formatTimestamp } from '/_100554_/l2/aiAgentHelper.js';
 import { loadChatPreferences } from '/_102025_/l2/collabMessagesHelper.js';
 
@@ -82,9 +82,9 @@ export class CollabMessagesChatMessage102025 extends StateLitElement {
         const userAvatar = userToFind.find((user) => user.userId === message.senderId)?.avatar_url || '';
         const cls = message.senderId === this.userId ? 'user' : 'system';
         const titleTranslated = this.getTitleMessageTranslated(message);
-
+        const hasReactions = message.reactions ? Object.keys(message.reactions).length > 0 : false;
         return html`
-            <div class="message ${cls} ${isSame ? 'same' : ''}">
+            <div class="message ${cls} ${isSame ? 'same' : ''} ${hasReactions ? 'reaction-on': ''}">
                 <div class="message-group">
                     <div class="message-row">
                         ${cls === 'user' ? this.renderReactionButtonAdd(message) : nothing}
@@ -350,7 +350,7 @@ export class CollabMessagesChatMessage102025 extends StateLitElement {
                 class="reaction add"
                 @click=${(ev: Event) => this.openReactionPicker(message, ev)}
             >
-                😊
+                ${collab_smile}
             </button>
         `
     }
