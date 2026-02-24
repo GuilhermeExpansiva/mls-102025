@@ -1,6 +1,6 @@
 /// <mls fileReference="_102025_/l2/collabMessagesPrompt.ts" enhancement="_100554_enhancementLit" />
 
-import { html, ifDefined } from 'lit';
+import { html, ifDefined, nothing } from 'lit';
 import { customElement, property, state, query, } from 'lit/decorators.js';
 import { StateLitElement } from '/_100554_/l2/stateLitElement.js';
 import { IAgent } from '/_100554_/l2/aiAgentBase.js'
@@ -11,8 +11,31 @@ import { emojiList } from '/_102025_/l2/collabMessagesEmojis.js'
 
 import '/_102025_/l2/collabMessagesAvatar.js';
 
+
+/// **collab_i18n_start**
+const message_pt = {
+    replyingTo: 'Respondendo a',
+    cancelReply: 'Cancelar resposta'
+}
+
+const message_en = {
+    replyingTo: 'Responding to',
+    cancelReply: 'Cancel reply'
+}
+
+type MessageType = typeof message_en;
+const messages: { [key: string]: MessageType } = {
+    'en': message_en,
+    'pt': message_pt
+}
+/// **collab_i18n_end**
+
+
 @customElement('collab-messages-prompt-102025')
 export class CollabMessagesPrompt extends StateLitElement {
+
+    private msg: MessageType = messages['en'];
+
     @query('textarea') textArea: HTMLTextAreaElement | undefined;
     @query('.mention-suggestions') mentionSuggestionsElement?: HTMLElement;
     @query('.wrapper') wrapper?: HTMLElement;
@@ -26,6 +49,12 @@ export class CollabMessagesPrompt extends StateLitElement {
     @state() allAgents: IMentionAgent[] = [];
     @state() alreadyLoadingAgents: boolean = false;
     @state() lastScopeLoaded: string | undefined;
+
+    @state() replyingTo?: {
+        messageId: string;
+        senderId: string;
+        preview: string;
+    };
 
     @property({ type: Function }) onSend: Function | undefined;
     @property() threadId?: string;
@@ -63,6 +92,21 @@ export class CollabMessagesPrompt extends StateLitElement {
         ) {
             this.getUsers();
         }
+    }
+
+    public setReply(message: {
+        messageId: string;
+        senderId: string;
+        preview: string;
+    }) {
+        this.replyingTo = message;
+        setTimeout(() => {
+            this.textArea?.focus();
+        });
+    }
+
+    public clearReply() {
+        this.replyingTo = undefined;
     }
 
     private async getUsers() {
@@ -197,8 +241,14 @@ export class CollabMessagesPrompt extends StateLitElement {
     }
 
     render() {
+        
+        const lang = this.getMessageKey(messages);
+        this.msg = messages[lang];
+
         return html`
             </div>
+                ${this.renderReply()}
+            
                 <div class="wrapper">
                     <textarea
                         .value=${this.text}
@@ -236,6 +286,36 @@ export class CollabMessagesPrompt extends StateLitElement {
                         </ul>
                 ` : ''}
         </div>`
+    }
+
+    private renderReply() {
+
+        const user = this.allUsers?.find(u => u.userId === this.replyingTo?.senderId)
+        const name = user?.name || this.replyingTo?.senderId;
+
+        return html`${this.replyingTo ? html`
+                <div class="reply-preview">
+                    <div class="reply-bar"></div>
+
+                    <div class="reply-content">
+                        <div class="reply-user">
+                            ${this.msg.replyingTo} @${name}
+                        </div>
+                        <div class="reply-text">
+                            ${this.replyingTo.preview}
+                        </div>
+                    </div>
+
+                    <button
+                        class="reply-cancel"
+                        @click=${this.clearReply}
+                        title="${this.msg.cancelReply}"
+                    >
+                        ✕
+                    </button>
+                </div>
+            ` : nothing
+            }`
     }
     async handleFocus() {
         if (this.acceptAutoCompleteAgents &&
@@ -454,8 +534,14 @@ export class CollabMessagesPrompt extends StateLitElement {
         }
 
         if (this.onSend && typeof this.onSend === 'function') {
-            this.onSend(finalText, { isSpecialMention, agentName });
+            this.onSend(finalText, {
+                isSpecialMention,
+                agentName,
+                replyTo: this.replyingTo
+            });
         }
+
+        this.replyingTo = undefined;
         this.text = '';
         this.adjustTextAreaHeight();
     }

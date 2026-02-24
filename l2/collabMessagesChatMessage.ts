@@ -2,22 +2,40 @@
 
 import { html, nothing, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { collab_translate, collab_circle_exclamation, collab_smile } from '/_102025_/l2/collabMessagesIcons.js';
+import {
+    collab_translate,
+    collab_circle_exclamation,
+    collab_smile,
+    collab_chevron_down,
+    collab_reply,
+    collab_copy,
+    collab_edit,
+    collab_delete
+} from '/_102025_/l2/collabMessagesIcons.js';
+
 import { formatTimestamp } from '/_100554_/l2/aiAgentHelper.js';
 import { loadChatPreferences } from '/_102025_/l2/collabMessagesHelper.js';
 
 import { StateLitElement } from '/_100554_/l2/stateLitElement.js';
-import { IChatPreferences, IMessage, IThreadInfo, MessageReactions } from '/_102025_/l2/collabMessagesHelper.js';
+import { IChatPreferences, IMessage, IThreadInfo, MessageReactions, IMessageReply } from '/_102025_/l2/collabMessagesHelper.js';
 
 /// **collab_i18n_start**
 const message_pt = {
     loading: 'Carregando...',
     msgNotSend: 'Mensagem não enviada*',
+    reply: 'Responder',
+    copy: 'Copiar',
+    delete: 'Apagar',
+    edit: 'Editar'
 }
 
 const message_en = {
     loading: 'Loading...',
     msgNotSend: 'Message not sent*',
+    reply: 'Reply',
+    copy: 'Copy',
+    delete: 'Delete',
+    edit: 'Edit'
 }
 
 type MessageType = typeof message_en;
@@ -31,17 +49,21 @@ const messages: { [key: string]: MessageType } = {
 export class CollabMessagesChatMessage102025 extends StateLitElement {
 
     @property() message?: IMessage;
+    @property({ reflect: true }) messageId?: string;
     @property({ attribute: false }) allThreads: mls.msg.Thread[] = [];
     @property() actualThread: IThreadInfo | undefined;
     @property() usersAvaliables: mls.msg.User[] = [];
     @property() userId: string | undefined;
-    @state() userPreferenceChat?: IChatPreferences;
     @property({ attribute: false }) openedReactionMessageId?: string;
     @property({ attribute: false }) reactionPickerTarget?: HTMLElement;
+    @property() openedMenuFor?: string;
+    @property() messageMenuTarget?: HTMLElement;
+    @state() userPreferenceChat?: IChatPreferences;
+    @state() private messageMenuPlacement: 'top' | 'bottom' = 'bottom';
 
     public onTaskClick?: Function;
     private msg: MessageType = messages['en'];
-    
+
     private readonly reactionEmojis: Record<string, string> = {
         thumbs_up: '👍',
         laugh: '😂',
@@ -55,6 +77,7 @@ export class CollabMessagesChatMessage102025 extends StateLitElement {
     updated() {
         this.positionReactionPicker();
         this.animateReactionPicker();
+        this.updateMessageMenuPlacement();
     }
 
     render() {
@@ -83,36 +106,43 @@ export class CollabMessagesChatMessage102025 extends StateLitElement {
         const titleTranslated = this.getTitleMessageTranslated(message);
         const hasReactions = message.reactions ? Object.keys(message.reactions).length > 0 : false;
         return html`
-            <div class="message ${cls} ${isSame ? 'same' : ''} ${hasReactions ? 'reaction-on': ''}">
+            <div class="message ${cls} ${isSame ? 'same' : ''} ${hasReactions ? 'reaction-on' : ''}">
                 <div class="message-group">
                     <div class="message-row">
                         ${cls === 'user' ? this.renderReactionButtonAdd(message) : nothing}
+                    
                         <div class="message-card ${cls} ${isSame ? 'same' : ''}">
+
+                            ${this.renderSubMenuButton(message)}
+                            ${this.renderMessageMenu(message)}
                             ${!isSame ? html`<div class="message-title">@${userName}</div>` : ``}
+                            ${message.reply ? this.renderReplyPreview(message.reply) : nothing}
                             ${this.renderMessageByLanguage(message)}
                             ${message.isLoading ? html`<span class="loader"></span>` : ''}
                             ${message.isFailed ? html`<div class="failed">
-                                <div>
-                                    <span>${collab_circle_exclamation}</span>
-                                    <small>${this.msg.msgNotSend}</small>
-                                </div>
-                                <small>${message.isFailedError}</small>
-                            </div>`: ''}
-                            ${message.taskId ? html`
-                                <div class="message-ai">
-                                    <collab-messages-task-102025
-                                        messageId=${message.createAt}
-                                        .context= ${message.context}
-                                        lastChanged= ${message.lastChanged}
-                                        taskId=${message.taskId}
-                                        threadId=${this.actualThread?.thread.threadId}
-                                        userId=${this.userId}
-                                        title=${titleTranslated}
-                                        status=${message.taskStatus}
-                                        @taskclick=${() => { if (this.onTaskClick) this.onTaskClick(message?.taskId || '', message.createAt, message.threadId, message) }}
-                                    >
-                                    </collab-messages-task-102025>
-                                </div> `: html``}
+                            <div>
+                                <span>${collab_circle_exclamation}</span>
+                                <small>${this.msg.msgNotSend}</small>
+                            </div>
+                            <small>${message.isFailedError}</small>
+                        </div>`: ''}
+                        
+                        ${message.taskId ? html`
+                            <div class="message-ai">
+                                <collab-messages-task-102025
+                                    messageId=${message.createAt}
+                                    .context= ${message.context}
+                                    lastChanged= ${message.lastChanged}
+                                    taskId=${message.taskId}
+                                    threadId=${this.actualThread?.thread.threadId}
+                                    userId=${this.userId}
+                                    title=${titleTranslated}
+                                    status=${message.taskStatus}
+                                    @taskclick=${() => { if (this.onTaskClick) this.onTaskClick(message?.taskId || '', message.createAt, message.threadId, message) }}
+                                >
+                                </collab-messages-task-102025>
+                            </div> `: html``
+            }
                             ${this.renderMessageResultByLanguage(message)}
                             ${this.renderMessageFooterResult(message)}
                             ${this.renderReactions(message)}
@@ -120,7 +150,6 @@ export class CollabMessagesChatMessage102025 extends StateLitElement {
                             <div class="message-footer">${dateFormated?.timeShort}</div>
                         </div>
                         ${cls === 'system' ? this.renderReactionButtonAdd(message) : nothing}
-
                         ${cls === 'system' && !isSame ? html`<collab-messages-avatar-102025 avatar=${userAvatar}></collab-messages-avatar-102025>` : ''}
                     </div>
                 </div>
@@ -189,6 +218,41 @@ export class CollabMessagesChatMessage102025 extends StateLitElement {
             default:
                 return null;
         }
+    }
+
+    private renderReplyPreview(reply: IMessageReply) {
+        const user =
+            this.usersAvaliables.find(u => u.userId === reply.senderId) ||
+            this.actualThread?.users?.find(u => u.userId === reply.senderId);
+
+        const name = user?.name || reply.senderId;
+
+        return html`
+        <div
+            class="message-reply-preview"
+            @click=${() => this.onReplyPreviewClick(reply.messageId)}
+        >
+            <div class="message-reply-bar"></div>
+
+            <div class="message-reply-content">
+                <div class="message-reply-user">
+                    @${name}
+                </div>
+
+                <div class="message-reply-text">
+                    ${reply.preview}
+                </div>
+            </div>
+        </div>
+    `;
+    }
+
+    private onReplyPreviewClick(messageId: string) {
+        this.dispatchEvent(new CustomEvent('reply-preview-click', {
+            detail: { messageId },
+            bubbles: true,
+            composed: true
+        }));
     }
 
     private renderMessageResultByLanguage(message: mls.msg.Message) {
@@ -318,18 +382,18 @@ export class CollabMessagesChatMessage102025 extends StateLitElement {
     //Reactions
 
     private renderReactions(message: IMessage) {
-    if (!message.reactions) return nothing;
+        if (!message.reactions) return nothing;
 
-    return html`
+        return html`
         <div class="message-reactions">
             ${Object.entries(message.reactions).map(([name, users]) => {
-                const emoji = this.reactionEmojis[name as string];
-                if (!emoji) return nothing;
+            const emoji = this.reactionEmojis[name as string];
+            if (!emoji) return nothing;
 
-                const reacted =
-                    this.userId && users.includes(this.userId);
+            const reacted =
+                this.userId && users.includes(this.userId);
 
-                return html`
+            return html`
                     <button
                         class="reaction ${reacted ? 'active' : ''}"
                         @click=${() => this.onReactionClick(message, name)}
@@ -338,10 +402,10 @@ export class CollabMessagesChatMessage102025 extends StateLitElement {
                         <span>${users.length}</span>
                     </button>
                 `;
-            })}
+        })}
         </div>
     `;
-}
+    }
 
     private renderReactionButtonAdd(message: IMessage) {
         return html`
@@ -403,14 +467,9 @@ export class CollabMessagesChatMessage102025 extends StateLitElement {
     private closeReactionPicker() {
         this.openedReactionMessageId = undefined;
         this.reactionPickerTarget = undefined;
-        if (!this.parentElement) return;
-        const all = Array.from(this.parentElement.querySelectorAll('collab-messages-chat-message-102025')) as CollabMessagesChatMessage102025[]
-        all.forEach((item: CollabMessagesChatMessage102025) => {
-            item.openedReactionMessageId = undefined;
-            item.reactionPickerTarget = undefined;
-        });
-
+        this.closeAllPopups();
     }
+
 
     private toggleReaction(
         message: IMessage,
@@ -421,7 +480,6 @@ export class CollabMessagesChatMessage102025 extends StateLitElement {
         const current = message.reactions ?? {};
         const next: MessageReactions = {};
 
-        // remove o usuário de qualquer reação existente
         for (const [name, users] of Object.entries(current)) {
             const filtered = users.filter(id => id !== userId);
             if (filtered.length) {
@@ -429,7 +487,6 @@ export class CollabMessagesChatMessage102025 extends StateLitElement {
             }
         }
 
-        // toggle
         if (!current[reaction]?.includes(userId)) {
             next[reaction] = [...(next[reaction] ?? []), userId];
         }
@@ -447,15 +504,12 @@ export class CollabMessagesChatMessage102025 extends StateLitElement {
         ) as HTMLElement | null;
 
         if (!picker) return;
-
         const items = Array.from(
             picker.querySelectorAll('.reaction-picker-item')
         ) as HTMLElement[];
 
         requestAnimationFrame(() => {
             picker.classList.add('open');
-
-            // ⏱️ stagger mais lento
             items.forEach((el, i) => {
                 setTimeout(() => {
                     el.classList.add('show');
@@ -496,6 +550,109 @@ export class CollabMessagesChatMessage102025 extends StateLitElement {
             picker.style.left = '0';
             picker.style.right = 'auto';
         }
+    }
+
+
+    // REPLY
+
+    private renderSubMenuButton(message: IMessage) {
+        return html`
+        <button
+            class="message-action submenu"
+            @click=${(ev: Event) => this.openMessageMenu(message, ev)}
+        >
+            ${collab_chevron_down}
+        </button>
+    `;
+    }
+
+    private openMessageMenu(message: IMessage, ev: Event) {
+        ev.stopPropagation();
+
+        if (this.openedMenuFor === message.createAt) {
+            this.closeMessageMenu();
+            return;
+        }
+        this.closeMessageMenu();
+        this.openedMenuFor = message.createAt;
+        this.messageMenuTarget = ev.currentTarget as HTMLElement;
+    }
+
+    private closeMessageMenu() {
+        this.openedMenuFor = undefined;
+        this.messageMenuTarget = undefined;
+        this.closeAllPopups();
+    }
+
+    private renderMessageMenu(message: IMessage) {
+        if (this.openedMenuFor !== message.createAt) return nothing;
+
+        return html`
+        <div class="message-menu ${this.messageMenuPlacement}">
+            <button>
+                ${collab_copy}
+                ${this.msg.copy}
+            </button>
+            <button @click=${() => this.onReplyClick(message)}>
+                ${collab_reply}
+                ${this.msg.reply}
+            </button>
+            <button>
+                ${collab_edit}
+                ${this.msg.edit}
+            </button>
+            <button>
+                ${collab_delete}
+                ${this.msg.delete}
+            </button>
+        
+        </div>
+    `;
+    }
+
+    private onReplyClick(message: IMessage) {
+        this.closeMessageMenu();
+        this.dispatchEvent(new CustomEvent('reply-message', {
+            detail: message,
+            bubbles: true,
+            composed: true
+        }));
+    }
+
+    private closeAllPopups() {
+        if (!this.parentElement) return;
+
+        const all = Array.from(this.parentElement.querySelectorAll('collab-messages-chat-message-102025')) as CollabMessagesChatMessage102025[];
+
+        all.forEach((item: CollabMessagesChatMessage102025) => {
+            item.openedReactionMessageId = undefined;
+            item.reactionPickerTarget = undefined;
+            item.openedMenuFor = undefined;
+            item.messageMenuTarget = undefined;
+        });
+
+    }
+
+    private updateMessageMenuPlacement() {
+        if (!this.messageMenuTarget) return;
+
+        const menu = this.renderRoot.querySelector(
+            '.message-menu'
+        ) as HTMLElement | null;
+
+        if (!menu) return;
+
+        const targetRect = this.messageMenuTarget.getBoundingClientRect();
+        const menuRect = menu.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const spaceBelow = viewportHeight - targetRect.bottom;
+        const spaceAbove = targetRect.top;
+        const shouldOpenTop = spaceBelow < menuRect.height && spaceAbove > spaceBelow;
+        this.messageMenuPlacement = shouldOpenTop ? 'top' : 'bottom';
+
+        requestAnimationFrame(() => {
+            menu.classList.add('open');
+        });
     }
 
 

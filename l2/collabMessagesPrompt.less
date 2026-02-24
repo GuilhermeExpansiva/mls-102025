@@ -7,15 +7,15 @@ collab-messages-prompt-102025 {
     font-size: @font-size-16;
     font-weight: @font-weight-normal;
     line-height: 1.5;
-
+    background-color: var(--grey-color-light);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    
     .wrapper {
         display: flex;
         align-items: center;
-        background-color: var(--grey-color-light);
         padding: 8px 4px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        border-top-left-radius: 12px;
-        border-top-right-radius: 12px;
 
         textarea {
             padding: 4px 4px;
@@ -138,6 +138,56 @@ collab-messages-prompt-102025 {
         padding: 8px;
         min-height: 40px;
         width: 100%;
+    }
+
+    .reply-preview {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px;
+        background: @grey-color-light;
+        border-top-left-radius: 12px;
+        border-top-right-radius: 12px;
+        border-bottom: 1px solid @grey-color;
+
+        .reply-bar {
+            width: 3px;
+            height: 100%;
+            background: @active-color;
+            border-radius: 2px;
+        }
+
+        .reply-content {
+            flex: 1;
+            min-width: 0;
+
+            .reply-user {
+                font-size: @font-size-12;
+                font-weight: @font-weight-bold;
+                color: @active-color;
+            }
+
+            .reply-text {
+                font-size: @font-size-12;
+                color: @text-primary-color;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+        }
+
+        .reply-cancel {
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 14px;
+            opacity: .6;
+            color: @text-primary-color;
+
+            &:hover {
+                opacity: 1;
+            }
+        }
     }
 
 }
