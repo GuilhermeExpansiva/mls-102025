@@ -10,6 +10,10 @@ collab-messages-chat-message-102025 {
         width: 100%;
         margin-top: 10px;
 
+        &.reaction-on {
+            margin-bottom: 20px;
+        }
+
         &.user {
             align-items: flex-end;
         }
@@ -25,6 +29,7 @@ collab-messages-chat-message-102025 {
             margin-bottom: 3px;
             margin-left: 50px;
             position: relative;
+            gap: .2rem;
 
             .message-card {
                 display: flex;
@@ -174,8 +179,11 @@ collab-messages-chat-message-102025 {
         display: flex;
         gap: 4px;
         margin-top: 4px;
+        position: absolute;
+        bottom: -15px;
+        right: 10px;
+        box-shadow: 0 1px #00000012, 0 0 3px #0000000a;
     }
-
 
     .reaction {
         display: flex;
@@ -185,12 +193,8 @@ collab-messages-chat-message-102025 {
         padding: 2px 6px;
         font-size: 12px;
         cursor: pointer;
-        background: @bg-primary-color;
+        background: #f5f5f5;
         border: none;
-    }
-
-    .reaction.active {
-        background: @bg-primary-color-hover;
     }
 
     .reaction-picker {
@@ -233,6 +237,15 @@ collab-messages-chat-message-102025 {
     .message.system .reaction-picker {
         transform-origin: bottom left;
     }
+
+    .message.user .message-reactions {
+        right: 10px;
+    }
+
+    .message.system .message-reactions {
+        left: 10px;
+    }
+
 
     .reaction-picker-item2 {
         font-size: 18px;
@@ -289,6 +302,14 @@ collab-messages-chat-message-102025 {
         pointer-events: none;
         transform: scale(0.9);
         transition: opacity .15s ease, transform .15s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        filter: grayscale(100%) brightness(100%) opacity(90%);
+        border-radius: 20px;
+        background: #f5f5f5;
+        width: 29px;
+        height: 29px;
     }
 
 
