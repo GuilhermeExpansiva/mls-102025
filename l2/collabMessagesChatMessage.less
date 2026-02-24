@@ -58,7 +58,7 @@ collab-messages-chat-message-102025 {
                 }
 
                 &.user {
-                    background-color: #daf8cb;
+                    background-color: #d9fdd3;
                     align-self: flex-end;
                 }
 
@@ -307,6 +307,144 @@ collab-messages-chat-message-102025 {
         height: 29px;
     }
 
+
+    //REPLY 
+
+    .message-action.submenu {
+        opacity: 0;
+        pointer-events: none;
+        position: absolute;
+        right: 10px;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        width: 28px;
+        height: 28px;
+
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+
+        color: @text-primary-color;
+        cursor: pointer;
+
+        transition:
+            opacity 0.15s ease,
+            transform 0.15s ease,
+            background 0.15s ease;
+
+    }
+
+    .message:hover .message-action.submenu {
+        opacity: 1;
+        pointer-events: auto;
+        transform: scale(1);
+    }
+
+    .message-menu {
+        position: absolute;
+        min-width: 120px;
+        background: var(--bg-primary-color);
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, .15);
+        padding: 4px;
+        z-index: 30;
+        max-width: 100px;
+        right: 10px;
+        opacity: 0;
+        transform: scale(0.95);
+        transition:
+            opacity 120ms ease,
+            transform 120ms ease;
+    }
+
+    .message-menu.open {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    .message-menu.bottom {
+        top: 15%;
+        margin-top: 6px;
+    }
+
+    .message-menu.top {
+        bottom: 100%;
+        margin-bottom: 6px;
+    }
+
+    .message-menu button {
+        border: none;
+        background: transparent;
+        padding: 6px 12px;
+        cursor: pointer;
+        font-size: 13px;
+        width: 100%;
+        text-align: left;
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        color: @text-primary-color;
+    }
+
+    .message-menu button:hover {
+        background: @grey-color-lighter;
+    }
+
+    // Reply Preview Message
+
+    .message-reply-preview {
+        display: flex;
+        gap: 6px;
+        padding: 6px;
+        margin-bottom: 6px;
+        border-radius: 6px;
+        background-color: rgba(194, 189, 184, .15);
+        cursor: pointer;
+    }
+
+    .message-reply-bar {
+        width: 3px;
+        border-radius: 2px;
+
+        flex-shrink: 0;
+    }
+
+    .message.user .message-reply-bar {
+        background: @success-color;
+    }
+
+    .message.system .message-reply-bar {
+        background: @grey-color;
+    }
+
+    .message-reply-content {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+        color: #000;
+        opacity: .7;
+    }
+
+    .message-reply-user {
+        font-size: 11px;
+        font-weight: 600;
+        opacity: .8;
+    }
+
+    .message-reply-text {
+        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        opacity: .85;
+    }
 
 }
 

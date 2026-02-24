@@ -125,8 +125,6 @@ export class CollabMessagesChat extends StateLitElement {
     @state() private lastTopicFilter: string = '';
     @state() private welcomeMessage: string = '';
     @state() private usersAvaliables: mls.msg.User[] = [];
-    @state() private openedReactionMessageId?: string;
-    @state() private reactionPickerTarget?: HTMLElement;
 
     @property() group: 'CONNECT' | 'APPS' | 'DOCS' | 'CRM' = 'CONNECT';
     @property() userId: string | undefined;
@@ -340,12 +338,15 @@ export class CollabMessagesChat extends StateLitElement {
                 else nextNeedShowLabel = false;
                 return html`
                                 <collab-messages-chat-message-102025
+                                    messageId=${message.createAt}
                                     .message=${message}
                                     .allThreads=${this.allThreads}
                                     .actualThread=${this.actualThread}
                                     .usersAvaliables=${this.usersAvaliables}
                                     .userId=${this.userId}
                                     .onTaskClick=${this.onTaskClick.bind(this)}
+                                    @reply-preview-click=${this.onReplyPreviewClick}
+                                    @reply-message=${this.onReplyMessageClick}
                                 ></collab-messages-chat-message-102025>
                                 ${nextNeedShowLabel ? html`<div class="new-messages-label">${this.msg.newMessages}</div>` : ''}`
             })}`
@@ -1592,6 +1593,25 @@ export class CollabMessagesChat extends StateLitElement {
 
     }
 
+    private onReplyPreviewClick(ev: CustomEvent) {
+
+        const messageReply = this.messageContainer?.querySelector(
+            `collab-messages-chat-message-102025[messageid="${ev.detail.messageId}"]`
+        );
+        if (!messageReply) return;
+        messageReply.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    private onReplyMessageClick(ev: CustomEvent) {
+        if (!ev.detail) return;
+        const data = ev.detail as IMessage;
+        this.collabMessagesPrompt?.setReply({
+            messageId: data.createAt,
+            senderId: data.senderId,
+            preview: data.content.slice(0, 80)
+        });
+    }
+
     private async getTaskUpdate(taskId: string, createdAt: string, threadId: string) {
         if (!taskId || !createdAt || !threadId) throw new Error('Invalid args');
         if (!this.userId) throw new Error('Invalid userId');
@@ -1725,6 +1745,8 @@ export class CollabMessagesChat extends StateLitElement {
         all.forEach((item: CollabMessagesChatMessage102025) => {
             item.openedReactionMessageId = undefined;
             item.reactionPickerTarget = undefined;
+            item.openedMenuFor = undefined;
+            item.messageMenuTarget = undefined;
         });
     };
 

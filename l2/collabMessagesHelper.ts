@@ -407,6 +407,7 @@ export interface IMessage extends mls.msg.MessagePerformanceCache {
     isFailed?: boolean,
     isFailedError?: string,
     reactions?: MessageReactions;
+    reply?: IMessageReply;
 }
 
 export interface IThreadInfo {
@@ -420,4 +421,8 @@ export interface IThreadInfo {
 
 export type MessageReactions = Record<string, string[]>;
 
-
+export interface IMessageReply {
+    messageId: string;
+    senderId: string;
+    preview: string;
+}
