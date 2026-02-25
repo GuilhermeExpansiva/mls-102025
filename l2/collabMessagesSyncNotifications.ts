@@ -124,7 +124,6 @@ export async function getThreadUpdateInBackground(threadId: string): Promise<voi
         }
 
         const statusChanged = threadDB && threadDB.status != response.thread.status;
-
         const newMessagesFiltered = response.messages?.filter((message) => message.senderId !== userId) || [];
         const hasNewMessages = newMessagesFiltered.length > 0;
 
@@ -161,10 +160,10 @@ export async function getThreadUpdateInBackground(threadId: string): Promise<voi
             const tempMessage: mls.msg.MessagePerformanceCache = { ...mm, footers: messageOld?.footers || [] };
             newMessages.push(tempMessage);
         }
+        
         await addMessages(newMessages);
         notifyThreadChange(thread);
-        hasNotificationMessages = true;
-
+        if(newMessagesFiltered.length > 0) hasNotificationMessages = true;
 
     } catch (err: any) {
         throw new Error(err.message)
