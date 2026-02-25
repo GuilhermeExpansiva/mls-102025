@@ -44,10 +44,10 @@ export class CollabMessageTaskPreviewFlexible extends CollabLitElement {
 
     }
 
+
     render() {
 
         if (!this.step) {
-
             return html`<p>Step not Found.</p>`;
         }
 
@@ -200,15 +200,24 @@ export class CollabMessageTaskPreviewFlexible extends CollabLitElement {
 
     //------IMPLEMENTATION----------
 
+    private createModel() {
+        const uri = monaco.Uri.parse(`file://server/taskViewModel.ts`);
+        let src = '';
+        let model1 = monaco.editor.getModel(uri);
+        if (!model1) model1 = monaco.editor.createModel(src, 'javascript', uri);
+        return model1;
+    }
+
     private createEditor(): void {
         if (!this.elEditor || this._ed1) return;
         if ((window as any).editorTaskView) {
             this.editor = (window as any).elEditorTaskView;
             this._ed1 = (window as any).editorTaskView;
+            this._ed1?.setModel(this.createModel());
 
         } else {
 
-
+            const model = this.createModel();
             (window as any).elEditorTaskView = document.createElement('mls-editor-100529');
             (window as any).elEditorTaskView.style.cssText = 'width:100%; height:100%'
             this.editor = (window as any).elEditorTaskView as IHTMLEditorElement;
@@ -220,6 +229,7 @@ export class CollabMessageTaskPreviewFlexible extends CollabLitElement {
 
             this._ed1.updateOptions({ readOnly: true });
             this.editor.mlsEditor = this._ed1;
+            this._ed1.setModel(model);
         }
 
         this.elEditor.appendChild(this.editor as any);
