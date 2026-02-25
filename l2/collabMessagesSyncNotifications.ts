@@ -124,9 +124,12 @@ export async function getThreadUpdateInBackground(threadId: string): Promise<voi
         }
 
         const statusChanged = threadDB && threadDB.status != response.thread.status;
-        const hasNewMessages = response.messages && response.messages.length > 0;
+
+        const newMessagesFiltered = response.messages?.filter((message) => message.senderId !== userId) || [];
+        const hasNewMessages = newMessagesFiltered.length > 0;
 
         if (!statusChanged && !hasNewMessages) return;
+        
         if (statusChanged && !hasNewMessages) {
             const thread = await updateThread(threadId, response.thread, '', '', 1, getCompactUTC())
             notifyThreadChange(thread);
@@ -146,7 +149,7 @@ export async function getThreadUpdateInBackground(threadId: string): Promise<voi
             response.thread,
             lastMessageText,
             lastMessage.createAt,
-            response.messages.length + lastUnreadCount,
+            newMessagesFiltered.length + lastUnreadCount,
             lastMessage.createAt,
 
         );
