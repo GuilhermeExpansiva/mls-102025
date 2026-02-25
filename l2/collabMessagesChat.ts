@@ -1494,7 +1494,7 @@ export class CollabMessagesChat extends StateLitElement {
                 updateLastMessageThreadDB ? newMessage.createAt : undefined,
                 0,
                 updateLastSyncThreadDB ? newMessage.createAt : undefined,
-            ); newMessage.createAt
+            ); 
 
             thread = await updateLastMessageReadTime(newMessage.threadId, newMessage.createAt)
             if (this.actualThread) this.actualThread.thread = thread;
