@@ -537,7 +537,7 @@ export class CollabMessagesPrompt extends StateLitElement {
             this.onSend(finalText, {
                 isSpecialMention,
                 agentName,
-                replyTo: this.replyingTo
+                replyTo: this.replyingTo?.messageId
             });
         }
 
