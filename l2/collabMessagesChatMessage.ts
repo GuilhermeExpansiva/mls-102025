@@ -1,6 +1,6 @@
 /// <mls fileReference="_102025_/l2/collabMessagesChatMessage.ts" enhancement="_100554_enhancementLit"/>
 
-import { html, nothing, LitElement } from 'lit';
+import { html, nothing, LitElement, TemplateResult, until } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import {
     collab_translate,
@@ -15,9 +15,11 @@ import {
 
 import { formatTimestamp } from '/_100554_/l2/aiAgentHelper.js';
 import { loadChatPreferences } from '/_102025_/l2/collabMessagesHelper.js';
+import { getMessage } from '/_102025_/l2/collabMessagesIndexedDB.js';
+
 
 import { StateLitElement } from '/_100554_/l2/stateLitElement.js';
-import { IChatPreferences, IMessage, IThreadInfo, MessageReactions, IMessageReply } from '/_102025_/l2/collabMessagesHelper.js';
+import { IChatPreferences, IMessage, IThreadInfo } from '/_102025_/l2/collabMessagesHelper.js';
 
 /// **collab_i18n_start**
 const message_pt = {
@@ -80,6 +82,7 @@ export class CollabMessagesChatMessage102025 extends StateLitElement {
         this.updateMessageMenuPlacement();
     }
 
+
     render() {
         const lang = this.getMessageKey(messages);
         this.msg = messages[lang];
@@ -116,7 +119,7 @@ export class CollabMessagesChatMessage102025 extends StateLitElement {
                             ${this.renderSubMenuButton(message)}
                             ${this.renderMessageMenu(message)}
                             ${!isSame ? html`<div class="message-title">@${userName}</div>` : ``}
-                            ${message.reply ? this.renderReplyPreview(message.reply) : nothing}
+                            ${message.replyTo ? this.renderReplyPreview(message.replyTo) : nothing}
                             ${this.renderMessageByLanguage(message)}
                             ${message.isLoading ? html`<span class="loader"></span>` : ''}
                             ${message.isFailed ? html`<div class="failed">
@@ -220,7 +223,28 @@ export class CollabMessagesChatMessage102025 extends StateLitElement {
         }
     }
 
-    private renderReplyPreview(reply: IMessageReply) {
+
+    private replyCache = new Map<string, Promise<TemplateResult>>();
+
+    private renderReplyPreview(replyId: string) {
+
+        if (!this.replyCache.has(replyId)) {
+            this.replyCache.set(replyId, this.loadReplyPreview(replyId));
+        }
+
+        return until(
+            this.replyCache.get(replyId),
+            html`<div class="message-reply-preview loading">${this.msg.loading}</div>`
+        );
+    }
+
+    private async loadReplyPreview(replyId: string) {
+
+        if (!this.actualThread) return html`${nothing}`;
+        const messageId = `${this.actualThread.thread.threadId}/${replyId}`
+        const reply = await getMessage(messageId);
+        if (!reply) return html`${nothing}`
+
         const user =
             this.usersAvaliables.find(u => u.userId === reply.senderId) ||
             this.actualThread?.users?.find(u => u.userId === reply.senderId);
@@ -230,7 +254,7 @@ export class CollabMessagesChatMessage102025 extends StateLitElement {
         return html`
         <div
             class="message-reply-preview"
-            @click=${() => this.onReplyPreviewClick(reply.messageId)}
+            @click=${() => this.onReplyPreviewClick(reply.createAt)}
         >
             <div class="message-reply-bar"></div>
 
@@ -240,7 +264,7 @@ export class CollabMessagesChatMessage102025 extends StateLitElement {
                 </div>
 
                 <div class="message-reply-text">
-                    ${reply.preview}
+                    ${reply.content}
                 </div>
             </div>
         </div>
@@ -312,17 +336,13 @@ export class CollabMessagesChatMessage102025 extends StateLitElement {
 
     private renderCollabMessagesRichPreview(text: string) {
 
-        const text2 = text.trim().startsWith('@@')
-            ? text.slice(0, 200) + (text.length > 200 ? '...' : '')
-            : text;
-
         return html`
         <collab-messages-rich-preview-text-102025 
             @mention-hover=${this.onMentionHover}
             @channel-hover=${this.onChannelHover}
             .allUsers=${this.usersAvaliables} 
             .allThreads=${this.allThreads}
-            text="${text2}"
+            text="${text}"
         ></collab-messages-rich-preview-text-102025>`
     }
 
@@ -482,7 +502,7 @@ export class CollabMessagesChatMessage102025 extends StateLitElement {
     ): IMessage {
 
         const current = message.reactions ?? {};
-        const next: MessageReactions = {};
+        const next: Record<string, string[]> = {};
 
         for (const [name, users] of Object.entries(current)) {
             const filtered = users.filter(id => id !== userId);
