@@ -212,6 +212,7 @@ export class CollabMessagesChat extends StateLitElement {
         window.removeEventListener('task-change', this.onTaskChange);
         window.removeEventListener('task-details-close', this.onTaskDetailsClose);
         window.removeEventListener('thread-change', this.onThreadChange.bind(this));
+        window.removeEventListener('message-change', this.onMessageChange.bind(this));
         window.removeEventListener('message-send', this.onMessageSend);
         document.removeEventListener("visibilitychange", this.onVisibilityChange.bind(this));
         document.removeEventListener('click', this.onDocumentClick);
@@ -223,6 +224,7 @@ export class CollabMessagesChat extends StateLitElement {
         window.addEventListener('task-change', this.onTaskChange);
         window.addEventListener('task-details-close', this.onTaskDetailsClose);
         window.addEventListener('thread-change', this.onThreadChange.bind(this));
+        window.addEventListener('message-change', this.onMessageChange.bind(this));
         window.addEventListener('message-send', this.onMessageSend);
         document.addEventListener("visibilitychange", this.onVisibilityChange.bind(this));
     }
@@ -940,7 +942,7 @@ export class CollabMessagesChat extends StateLitElement {
             .map((item) => {
                 const lastTimestamp = item.thread.lastMessageTime
                     ? item.thread.lastMessageTime
-                    : item.thread.history[0].timestamp;
+                    : item.thread.history?.length ? item.thread.history[0]?.timestamp : '';
 
                 const formatedTimestamp = formatTimestamp(lastTimestamp)?.dateFull;
                 const lastMessageDate = this.parseLocalDate(formatedTimestamp || '');
@@ -1186,7 +1188,7 @@ export class CollabMessagesChat extends StateLitElement {
                     let threadId: string = '';
                     const parts = threadsPending.split(':');
                     threadId = parts[0];
-            
+
                     if (threadId !== threadInfo.thread.threadId) {
                         removeThreadFromSync(threadId);
                         await getThreadUpdateInBackground(threadsPending);
@@ -1766,6 +1768,24 @@ export class CollabMessagesChat extends StateLitElement {
 
         this.requestUpdate();
     };
+
+    private onMessageChange(e: Event) {
+
+        const customEvent = e as CustomEvent;
+        const message: mls.msg.Message = customEvent.detail;
+
+        if (!this.actualThread || !message || message.threadId !== this.actualThread.thread.threadId) return;
+        for (const item of Object.values(this.actualMessagesParsed)) {
+            const find = item.find(m => m.createAt === message.createAt);
+            if (find) {
+                Object.assign(find, message);
+                const item = this.messageContainer?.querySelector(`collab-messages-chat-message-102025[messageid="${message.createAt}"]`);
+                if(item) (item as any)['message'] = message;
+                break;
+            }
+        }
+
+    }
 
     private onMessageSend = async (e: Event) => {
         const customEvent = e as CustomEvent;
