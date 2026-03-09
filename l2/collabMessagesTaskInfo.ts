@@ -20,6 +20,7 @@ export class CollabMessagesTaskInfo extends StateLitElement {
     @property() task: mls.msg.TaskData | undefined = undefined;
     @property() message: mls.msg.Message | undefined = undefined;
     @property() restartPooling: boolean = false;
+    @property() isTest: boolean = false;
 
     @property() stepid: string = '';
     @property({ attribute: false }) seen = new Set<string>();
@@ -60,7 +61,7 @@ export class CollabMessagesTaskInfo extends StateLitElement {
             const context: mls.msg.ExecutionContext = {
                 task: this.task,
                 message: this.message,
-                isTest: false
+                isTest: this.isTest || false
             }
             continuePoolingTask(context);
         }
