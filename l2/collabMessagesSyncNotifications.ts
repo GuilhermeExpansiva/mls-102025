@@ -1,10 +1,10 @@
 /// <mls fileReference="_102025_/l2/collabMessagesSyncNotifications.ts" enhancement="_100554_enhancementLit" />
 
 import { getUserId, loadNotificationDeviceId, loadNotificationPreferencesAudio } from "/_102025_/l2/collabMessagesHelper.js";
-import { getThread, updateThread, getMessage, addMessages, getAllThreads, addThread, getCompactUTC } from '/_102025_/l2/collabMessagesIndexedDB.js';
+import { getThread, updateThread, getMessage, addMessages, getAllThreads, addThread, getCompactUTC, updateMessage } from '/_102025_/l2/collabMessagesIndexedDB.js';
 
 import { changeFavIcon } from "/_100554_/l2/libCommom.js";
-import { notifyThreadChange } from '/_100554_/l2/aiAgentHelper.js';
+import { notifyThreadChange, notifyMessageChange } from '/_100554_/l2/aiAgentHelper.js';
 
 export const threadSyncMap = new Map<string, boolean>();
 let hasNotificationMessages: boolean = false;
@@ -58,11 +58,11 @@ export async function listenToThreadEvents() {
             if (actualThreadId === threadId) {
                 isThreadOpened = true;
             }
-        }
+        }   
 
-        if (!isThreadOpened || (isThreadOpened && document.visibilityState === 'hidden')
-            && hasNotificationMessages
-            && typeNotification === 'thread-update'
+        if (typeNotification === 'thread-update' && (!isThreadOpened || (isThreadOpened && document.visibilityState === 'hidden')
+            && hasNotificationMessages)
+        
         ) {
             changeFavIcon(true);
             mls.services['102025_serviceCollabMessages_left']?.toogleBadge(true, '_102025_serviceCollabMessages');
@@ -126,17 +126,31 @@ export async function getThreadUpdateInBackground(reference: string): Promise<vo
     messageId = parts[1];
 
     if (typeNotification === 'thread-update') {
-        await updateThreadInBackground(threadId, userId, deviceId)
+        await updateThreadInBackground(threadId, userId, deviceId);
     }
 
     if (typeNotification === 'message-update') {
-        await updateMessageInBackground(threadId, messageId, userId, deviceId)
+        await updateMessageInBackground(threadId, messageId, userId, deviceId);
+        await updateThreadInBackground(threadId, userId, deviceId);
     }
 
 }
 
 async function updateMessageInBackground(threadId: string, messageId: string, userId: string, deviceId: string | null) {
-    // TODO
+    try {
+        const response = await mls.api.msgGetMessage({
+            messageId: `${threadId}/${messageId}`,
+            threadId,
+            userId
+        });
+
+        if ((mls as any).isTraceNotification) console.info(`[NOTIFICATION] : getMessageUpdateInBackground: ${response.message}`);
+        await updateMessage(response.message);
+        notifyMessageChange(response.message);
+
+    } catch (err: any) {
+        throw new Error(err.message)
+    }
 }
 
 async function updateThreadInBackground(threadId: string, userId: string, deviceId: string | null) {
@@ -156,10 +170,10 @@ async function updateThreadInBackground(threadId: string, userId: string, device
 
         if (response.threadsPending) {
             for (let threadsPending of response.threadsPending) {
-                let threadId: string = '';
-                const parts = threadsPending.split(':');
-                threadId = parts[0];
-                await enqueueThreadForSync(threadId);
+                // let threadId: string = '';
+                // const parts = threadsPending.split(':');
+                // threadId = parts[0];
+                await enqueueThreadForSync(threadsPending);
             }
         }
 
@@ -190,7 +204,6 @@ async function updateThreadInBackground(threadId: string, userId: string, device
             lastMessage.createAt,
             newMessagesFiltered.length + lastUnreadCount,
             lastMessage.createAt,
-
         );
 
         const newMessages: mls.msg.MessagePerformanceCache[] = [];
