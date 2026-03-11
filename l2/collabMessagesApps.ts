@@ -6,6 +6,7 @@ import { customElement, state } from 'lit/decorators.js';
 import { getProjectConfig } from '/_100554_/l2/libCommom.js';
 import { CollabLitElement } from '/_100554_/l2/collabLitElement.js';
 import { collabImport } from '/_100554_/l2/collabImport.js';
+import { getPath } from '/_102027_/l2/utils.js';
 import '/_102025_/l2/collabMessagesAppsMenu.js'; 
 
 @customElement('collab-messages-apps-102025')
@@ -68,8 +69,8 @@ export class CollabMessagesApps extends CollabLitElement {
             let pathImport = _module.path?.replace('/', '_');
 
             if (isDep) {
-                const iPath = mls.l2.getPath(_module.path);
-                if (!iPath.project) continue;
+                const iPath = getPath(_module.path);
+                if (!iPath || !iPath.project) continue;
                 const { folder, project, shortName } = iPath;
                 prjImport = project;
                 pathImport = folder ? folder + '/' + shortName : shortName;
