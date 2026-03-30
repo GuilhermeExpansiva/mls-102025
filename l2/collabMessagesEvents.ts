@@ -94,3 +94,18 @@ export function dispatchDetailsTaskClick(messageId: string, taskId: string, task
   scopeWindow.dispatchEvent(event);
 }
 
+
+export function dispatchThreadOpen(threadId: string, taskId?: string): void {
+  const scopeWindow = window?.top ? window.top : window;
+  const event = new CustomEvent('thread-open', {
+    detail: { taskId, threadId },
+    bubbles: true,
+    composed: true
+  });
+  scopeWindow.dispatchEvent(event);
+}
+
+export interface ICollabMessageEvent {
+  threadId: string,
+  taskId?: string,
+}

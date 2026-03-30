@@ -4,6 +4,8 @@ import { html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { collab_clock_static, collab_users } from '/_102025_/l2/collabMessagesIcons.js';
 import { getDateFormated, formatTimestamp } from '/_102025_/l2/collabMessagesHelper.js';
+import { dispatchThreadOpen } from '/_102025_/l2/collabMessagesEvents.js';
+
 
 import * as msg from '/_102025_/l2/shared/interfaces.js';
 import { StateLitElement } from '/_102029_/l2/stateLitElement.js';
@@ -109,7 +111,7 @@ export class CollabMessagesThreadModal extends StateLitElement {
         if (!this.thread) return;
         this.isLoading = true;
         try {
-            await mls.events.fire([mls.actualLevel], 'collabMessages' as any, JSON.stringify({ threadId: this.thread?.threadId, type: 'thread-open' }));
+            dispatchThreadOpen(this.thread?.threadId);
         } catch (err: any) {
             this.errorMessage = err.message;
         } finally {

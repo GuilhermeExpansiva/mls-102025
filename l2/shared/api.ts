@@ -29,12 +29,68 @@ async function handleRequest<T>(promise: Promise<T & { statusCode: number; msg?:
 	}
 }
 
+export async function post<T = msg.ResponseBase>(
+	args: msg.RequestBase
+): Promise<T> {
+	let urlHttp = "https://on.collab.codes/exec";
+
+	try {
+		const response = await fetch(urlHttp, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify(args),
+			credentials: 'include'
+		});
+
+		if (response.status !== msg.HttpStatus.OK) {
+			throw (await getPostError(response, args));
+		}
+
+		const data = await response.json();
+
+		if (!data) {
+			throw new Error("No data on cbePost");
+		}
+
+		return data as T;
+
+	} catch (error) {
+		console.info(error)
+		throw error;
+	}
+}
+
+export async function getPostError(response: Response, args: msg.RequestBase): Promise<Error> {
+	const data = await response.json()
+		.catch(err => {
+			console.error("Error on getPostError: ", err);
+			return new Error(`No data on cbePost error: ${err}`);
+		});
+
+	const errorMsg = (typeof data.msg === 'string') ? data.msg : data.error || 'Unknown error';
+	if (response.status === msg.HttpStatus.BAD_REQUEST) {
+		console.error(`Error on cbePost, status: ${response.status}, msg: ${errorMsg}, invalid args: `, JSON.stringify(args));
+		return new Error(`Invalid args, msg: ${errorMsg}`);
+	}
+	if (response.status === msg.HttpStatus.CONFLICT) {
+		return new Error(`DomainError: ${errorMsg}`);
+	}
+	const msg2 = `Error on cbePost, status: ${response.status} - ${response.statusText}, error: ${errorMsg}`;
+	console.error(msg2);
+	return new Error(msg2);
+}
+
 export async function msgGetUsers(
 	args: Omit<msg.RequestGetUsers, "action">
 ): Promise<ApiResult<msg.ResponseGetUsers>> {
 
 	return handleRequest<msg.ResponseGetUsers>(
-		mls.api.msgGetUsers(args)
+		post<msg.ResponseGetUsers>({
+			action: "getUsers",
+			...args
+		})
 	);
 }
 
@@ -42,7 +98,10 @@ export function msgGetUserUpdate(
 	args: Omit<msg.RequestGetUserUpdate, "action">
 ) {
 	return handleRequest<msg.ResponseGetUserUpdate>(
-		mls.api.msgGetUserUpdate(args)
+		post<msg.ResponseGetUserUpdate>({
+			action: "getUserUpdate",
+			...args
+		})
 	);
 }
 
@@ -50,7 +109,10 @@ export function msgUpdateUserDetails(
 	args: Omit<msg.RequestUpdateUserDetails, "action">
 ) {
 	return handleRequest<msg.ResponseUpdateUserDetails>(
-		mls.api.msgUpdateUserDetails(args)
+		post<msg.ResponseUpdateUserDetails>({
+			action: "updateUserDetails",
+			...args
+		})
 	);
 }
 
@@ -58,41 +120,54 @@ export function msgAddThread(
 	args: Omit<msg.RequestAddThread, "action">
 ) {
 	return handleRequest<msg.ResponseAddThread>(
-		mls.api.msgAddThread(args)
+		post<msg.ResponseAddThread>({
+			action: "addThread",
+			...args
+		})
 	);
 }
 
-export async function msgUpdateThread(
+export function msgUpdateThread(
 	args: Omit<msg.RequestUpdateThread, "action">
-): Promise<ApiResult<msg.ResponseUpdateThread>> {
-
+) {
 	return handleRequest<msg.ResponseUpdateThread>(
-		mls.api.msgUpdateThread(args)
+		post<msg.ResponseUpdateThread>({
+			action: "updateThread",
+			...args
+		})
 	);
 }
 
 export function msgRemoveParticipantFromThread(
 	args: Omit<msg.RequestRemoveUserInThread, "action">
 ) {
-	const params: msg.RequestRemoveUserInThread = {
-		action: 'removeUserInThread',
-		...args
-	};
-
 	return handleRequest<msg.ResponseRemoveUserInThread>(
-		mls.api.msgUpdateThread(params)
+		post<msg.ResponseRemoveUserInThread>({
+			action: "removeUserInThread",
+			...args
+		})
 	);
 }
 
-export function msgAddParticipantToThread(args: Omit<msg.RequestAddUserInThread, "action">) {
+export function msgAddParticipantToThread(
+	args: Omit<msg.RequestAddUserInThread, "action">
+) {
 	return handleRequest<msg.ResponseAddUserInThread>(
-		mls.api.msgAddUserInThread(args)
+		post<msg.ResponseAddUserInThread>({
+			action: "addUserInThread",
+			...args
+		})
 	);
 }
 
-export function msgGetThreadUpdates(args: Omit<msg.RequestGetThreadUpdate, "action">) {
+export function msgGetThreadUpdates(
+	args: Omit<msg.RequestGetThreadUpdate, "action">
+) {
 	return handleRequest<msg.ResponseGetThreadUpdate>(
-		mls.api.msgGetThreadUpdate(args)
+		post<msg.ResponseGetThreadUpdate>({
+			action: "getThreadUpdate",
+			...args
+		})
 	);
 }
 
@@ -100,7 +175,10 @@ export function msgGetTaskUpdate(
 	args: Omit<msg.RequestGetTaskUpdate, "action">
 ) {
 	return handleRequest<msg.ResponseGetTaskUpdate>(
-		mls.api.msgGetTaskUpdate(args)
+		post<msg.ResponseGetTaskUpdate>({
+			action: "getTaskUpdate",
+			...args
+		})
 	);
 }
 
@@ -108,7 +186,21 @@ export function msgAddMessage(
 	args: Omit<msg.RequestAddMessage, "action">
 ) {
 	return handleRequest<msg.ResponseAddMessage>(
-		mls.api.msgAddMessage(args)
+		post<msg.ResponseAddMessage>({
+			action: "addMessage",
+			...args
+		})
+	);
+}
+
+export function msgAddMessageAI(
+	args: Omit<msg.RequestAddMessageAI, "action">
+) {
+	return handleRequest<msg.ResponseAddMessageAI>(
+		post<msg.ResponseAddMessageAI>({
+			action: "addMessageAI",
+			...args
+		})
 	);
 }
 
@@ -116,8 +208,9 @@ export function msgAddOrUpdateThreadBot(
 	args: Omit<msg.RequestAddOrUpdateThreadBot, "action">
 ) {
 	return handleRequest<msg.ResponseAddOrUpdateThreadBot>(
-		mls.api.msgAddOrUpdateThreadBot({
-			...args,
+		post<msg.ResponseAddOrUpdateThreadBot>({
+			action: "addOrUpdateThreadBot",
+			...args
 		})
 	);
 }
@@ -126,7 +219,8 @@ export function msgAddOrUpdateThreadIntegration(
 	args: Omit<msg.RequestAddOrUpdateThreadIntegration, "action">
 ) {
 	return handleRequest<msg.ResponseAddOrUpdateThreadIntegration>(
-		mls.api.msgAddOrUpdateThreadIntegration({
+		post<msg.ResponseAddOrUpdateThreadIntegration>({
+			action: "addOrUpdateThreadIntegration",
 			...args
 		})
 	);
@@ -136,7 +230,10 @@ export function msgGetMessagesAfter(
 	args: Omit<msg.RequestGetMessagesAfter, "action">
 ) {
 	return handleRequest<msg.ResponseGetMessagesAfter>(
-		mls.api.msgGetMessagesAfter(args)
+		post<msg.ResponseGetMessagesAfter>({
+			action: "getMessagesAfter",
+			...args
+		})
 	);
 }
 
@@ -144,7 +241,10 @@ export function msgGetMessagesBefore(
 	args: Omit<msg.RequestGetMessagesBefore, "action">
 ) {
 	return handleRequest<msg.ResponseGetMessagesBefore>(
-		mls.api.msgGetMessagesBefore(args)
+		post<msg.ResponseGetMessagesBefore>({
+			action: "getMessagesBefore",
+			...args
+		})
 	);
 }
 
@@ -152,7 +252,10 @@ export function msgGetMessage(
 	args: Omit<msg.RequestGetMessage, "action">
 ) {
 	return handleRequest<msg.ResponseGetMessage>(
-		mls.api.msgGetMessage(args)
+		post<msg.ResponseGetMessage>({
+			action: "getMessage",
+			...args
+		})
 	);
 }
 
@@ -160,12 +263,12 @@ export function msgUpdateMessage(
 	args: Omit<msg.RequestUpdateMessage, "action">
 ) {
 	return handleRequest<msg.ResponseUpdateMessage>(
-		mls.api.msgUpdateMessage({
-			...args,
+		post<msg.ResponseUpdateMessage>({
+			action: "updateMessage",
+			...args
 		})
 	);
 }
-
 
 export function cbeAddOrUpdateOrgValue(
 	key: string,

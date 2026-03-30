@@ -201,9 +201,7 @@ export class CollabMessagesAddParticipant extends StateLitElement {
         this.isAddParticipant = true;
 
         try {
-
-            debugger;
-
+            
             const result = await msgAddParticipantToThread({
                 auth: this.auth,
                 userIdOrName: this.userIdOrName.trim(),

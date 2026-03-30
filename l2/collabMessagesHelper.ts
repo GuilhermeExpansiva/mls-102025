@@ -744,12 +744,6 @@ export interface CollabMessagesLS {
 
 }
 
-export interface ICollabMessageEvent {
-    type: 'thread-open',
-    threadId?: string,
-    taskId?: string,
-}
-
 export interface IMessage extends msg.MessagePerformanceCache {
     context?: msg.ExecutionContext,
     lastChanged?: number,
