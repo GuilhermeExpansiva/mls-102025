@@ -4,6 +4,7 @@ import { html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { collab_message } from '/_102025_/l2/collabMessagesIcons.js';
 import { createThreadDM, getDmThreadByUsers } from '/_102025_/l2/collabMessagesHelper.js';
+import { dispatchThreadOpen } from '/_102025_/l2/collabMessagesEvents.js';
 
 import * as msg from '/_102025_/l2/shared/interfaces.js';
 import { StateLitElement } from '/_102029_/l2/stateLitElement.js';
@@ -106,7 +107,7 @@ export class CollabMessagesUserModal extends StateLitElement {
     }
 
     private async onClickUserAction() {
-
+    
         if (!this.actualUserId || !this.user) return;
         this.isLoading = true;
         try {
@@ -116,7 +117,8 @@ export class CollabMessagesUserModal extends StateLitElement {
                 thread = await createThreadDM(threadName, this.user.userId, 'CONNECT');
             }
             this.destroy();
-            await mls.events.fire([mls.actualLevel], 'collabMessages' as any, JSON.stringify({ threadId: thread?.threadId, type: 'thread-open' }));
+            dispatchThreadOpen(thread?.threadId);
+            
         } catch (err: any) {
             this.errorMessage = err.message;
         } finally {

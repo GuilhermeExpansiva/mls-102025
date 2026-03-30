@@ -2,6 +2,7 @@
 
 import { html, ifDefined } from 'lit';
 import { customElement, property, state, query } from 'lit/decorators.js';
+
 import * as msg from '/_102025_/l2/shared/interfaces.js';
 
 import {
@@ -26,10 +27,10 @@ import {
     loadLastAlertTime,
     changeFavIcon
 } from "/_102025_/l2/collabMessagesHelper.js";
-
+import { checkIfNotificationUnread } from '/_102025_/l2/collabMessagesSyncNotifications.js';
 import { msgGetUserUpdate, msgGetThreadUpdates } from '/_102025_/l2/shared/api.js';
 
-import { checkIfNotificationUnread } from '/_102025_/l2/collabMessagesSyncNotifications.js';
+import { ICollabMessageEvent } from '/_102025_/l2/collabMessagesEvents.js';
 import { CollabLitElement } from '/_102029_/l2/collabLitElement.js';
 import { collab_crm, collab_tasks, collab_connect, collab_moments, collab_gear, collab_bell_slash, collab_xmark } from '/_102025_/l2/collabMessagesIcons.js';
 
@@ -138,7 +139,6 @@ export class CollabMessages extends CollabLitElement {
 
     async firstUpdated(changedProperties: Map<PropertyKey, unknown>) {
         super.firstUpdated(changedProperties);
-        window.addEventListener('thread-change', this.onThreadChange.bind(this));
         this.checkNotificationPermission();
         this.startPendentsPoolingsIfNeeded();
         this.checkNotificationPending();
@@ -186,7 +186,7 @@ export class CollabMessages extends CollabLitElement {
         }
     }
 
-    private onThreadChange = async (e: Event) => {
+    private async onThreadChange(e: Event) {
         const customEvent = e as CustomEvent;
         const thread = customEvent.detail as msg.Thread;
         if (this.userThreads[thread.threadId]) {
@@ -200,15 +200,32 @@ export class CollabMessages extends CollabLitElement {
         }
     }
 
+    private async onThreadOpen(e: Event) {
+        const customEvent = e as CustomEvent;
+        const data = customEvent.detail as ICollabMessageEvent;
+        if (!data.threadId) return;
+        const thread = await getThread(data.threadId);
+        if (!thread) return;
+        if (data.taskId) this.taskToOpen = data.taskId;
+
+        this.threadToOpen = thread.threadId;
+        const group = thread.group;
+        if (group !== this.activeTab) this.activeTab = group as ITabType;
+
+    }
+
     private setEvents() {
-        // mls.events.addEventListener([0, 1, 2, 3, 4, 5, 6, 7], ['collabMessages'] as any, this.onCollabEventsCollabMessages.bind(this));
+        window.addEventListener('thread-change', this.onThreadChange.bind(this));
         window.addEventListener('thread-create', this.onThreadCreate);
+        window.addEventListener('thread-open', this.onThreadOpen.bind(this));
+
     }
 
     private removeEvents() {
         window.removeEventListener('thread-create', this.onThreadCreate);
         window.removeEventListener('thread-change', this.onThreadChange.bind(this));
-        // mls.events.removeEventListener([0, 1, 2, 3, 4, 5, 6, 7], ['collabMessages'] as any, this.onCollabEventsCollabMessages.bind(this));
+        window.removeEventListener('thread-open', this.onThreadOpen.bind(this));
+
     }
 
     renderHeader() {
