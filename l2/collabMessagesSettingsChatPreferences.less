@@ -1,0 +1,150 @@
+/// <mls fileReference="_102025_/l2/collabMessagesSettingsChatPreferences.less" enhancement="enhancementStyle"/>
+
+collab-messages-settings-chat-preferences-102025 {
+
+    display: block;
+
+    .section {
+        padding: 1.4rem 0.75rem;
+        border-radius: 10px;
+        box-shadow: #e7e3e3 0px 1px 4px;
+        background-color: @bg-primary-color-darker;
+        margin-bottom: 1.5rem;
+
+        h4 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+            margin-block-start: 0;
+            padding-bottom: .4rem;
+            border-bottom: 1px solid #d2d2d2;
+
+            svg {
+                fill: currentColor;
+                width: 20px;
+                height: 20px;
+            }
+        }
+
+        .loader {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ccc;
+            border-top: 2px solid #333;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .saving-ok {
+            color: @success-color;
+            font-size: @font-size-12;
+        }
+
+        .saving-error {
+            color: @error-color;
+            font-size: @font-size-12;
+        }
+
+        .form-field {
+            margin-bottom: 1rem;
+
+            label {
+                display: block;
+                font-size: @font-size-12;
+                color: @text-primary-color-lighter;
+                margin-bottom: 0.3rem;
+            }
+        }
+
+        input,
+        select {
+            display: flex;
+            font-size: 1rem;
+            line-height: 1.5;
+            color: #000000;
+            background-color: #fff;
+            background-clip: padding-box;
+            border: 1px solid #ced4da;
+            border-radius: 0.25rem;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+            outline: none;
+            max-height: 30px;
+            height: 30px;
+            padding: 0 0.5rem;
+        }
+
+        select {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        input {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: @info-color;
+            box-shadow: 0px 1px 3px 0px @grey-color;
+            flex-direction: row;
+            justify-content: center;
+            width: max-content;
+            transition: height 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+            color: #ffffff;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: @font-size-12;
+            font-weight: @font-weight-bold;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            white-space: nowrap;
+            flex-shrink: 0;
+
+            svg {
+                flex-shrink: 0;
+                fill: currentColor;
+            }
+
+            &:hover {
+                background-color: @info-color-hover;
+            }
+
+            &:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+            }
+        }
+    }
+
+    .chat-preferences {
+        .chat-config-item {
+            display: flex;
+            flex-direction: column;
+            gap: .3rem;
+            margin-bottom: 1rem;
+
+            &.action {
+                display: flex;
+                justify-content: flex-end;
+                align-items: flex-end;
+                margin-top: 1.5rem;
+                padding-top: 1rem;
+                border-top: 1px solid @grey-color;
+            }
+        }
+    }
+
+}
+
+

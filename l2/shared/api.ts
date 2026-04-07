@@ -270,6 +270,85 @@ export function msgUpdateMessage(
 	);
 }
 
+export function msgAddOrUpdateOpenClawConnector(
+	args: Omit<msg.RequestAddOrUpdateOpenClawConnector, "action">
+) {
+	return handleRequest<msg.ResponseAddOrUpdateOpenClawConnector>(
+		post<msg.ResponseAddOrUpdateOpenClawConnector>({
+			action: "addOrUpdateOpenClawConnector",
+			...args
+		})
+	);
+}
+
+export function msgRemoveOpenClawConnector(
+	args: Omit<msg.RequestRemoveOpenClawConnector, "action">
+) {
+	return handleRequest<msg.ResponseRemoveOpenClawConnector>(
+		post<msg.ResponseRemoveOpenClawConnector>({
+			action: "removeOpenClawConnector",
+			...args
+		})
+	);
+}
+
+export function msgListOpenClawConnectors(
+	args: Omit<msg.RequestListOpenClawConnectors, "action">
+) {
+	return handleRequest<msg.ResponseListOpenClawConnectors>(
+		post<msg.ResponseListOpenClawConnectors>({
+			action: "listOpenClawConnectors",
+			...args
+		})
+	);
+}
+
+export function msgListOpenClawConnectorAgents(
+	args: Omit<msg.RequestListOpenClawConnectors, "action">
+) {
+	return handleRequest<msg.ResponseListOpenClawConnectors>(
+		post<msg.ResponseListOpenClawConnectors>({
+			action: "listOpenClawConnectors",
+			...args
+		})
+	);
+}
+
+export function msgAddOrUpdateThreadOpenClawAgent(
+	args: Omit<msg.RequestAddOrUpdateThreadOpenClawAgent, "action">
+) {
+	return handleRequest<msg.ResponseAddOrUpdateThreadOpenClawAgent>(
+		post<msg.ResponseAddOrUpdateThreadOpenClawAgent>({
+			action: "addOrUpdateThreadOpenClawAgent",
+			...args
+		})
+	);
+}
+
+export function msgRemoveThreadOpenClawAgent(
+	args: Omit<msg.RequestRemoveThreadOpenClawAgent, "action">
+) {
+	return handleRequest<msg.ResponseRemoveThreadOpenClawAgent>(
+		post<msg.ResponseRemoveThreadOpenClawAgent>({
+			action: "removeThreadOpenClawAgent",
+			...args
+		})
+	);
+}
+
+export function msgListThreadOpenClawAgents(
+	args: Omit<msg.RequestListThreadOpenClawAgents, "action">
+) {
+	return handleRequest<msg.ResponseListThreadOpenClawAgents>(
+		post<msg.ResponseListThreadOpenClawAgents>({
+			action: "listThreadOpenClawAgents",
+			...args
+		})
+	);
+}
+
+
+
 
 export type ApiResult<T> = {
 	success: boolean;
