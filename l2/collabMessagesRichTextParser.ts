@@ -1,5 +1,9 @@
 /// <mls fileReference="_102025_/l2/collabMessagesRichTextParser.ts" enhancement="_102027_/l2/enhancementLit" />
 
+// ─────────────────────────────────────────────────────────────
+// Tipos de Tokens
+// ─────────────────────────────────────────────────────────────
+
 export type RichToken =
     | { type: 'text'; value: string }
     | { type: 'bold'; value: string; markerStart: string; markerEnd: string }
@@ -19,11 +23,18 @@ export type RichToken =
 
 type ParserState = 'NORMAL' | 'INLINE_CODE' | 'CODE_BLOCK';
 
+// ─────────────────────────────────────────────────────────────
+// Funções auxiliares
+// ─────────────────────────────────────────────────────────────
+
 const isBoundary = (char?: string): boolean => !char || /\s/.test(char);
 
 const matchRawLink = (s: string): RegExpMatchArray | null =>
     s.match(/^(https?:\/\/[^\s]+|www\.[^\s]+)/);
 
+// ─────────────────────────────────────────────────────────────
+// Parser principal - processa texto completo (com blocos)
+// ─────────────────────────────────────────────────────────────
 
 export function parseRichText(input: string): RichToken[] {
     const tokens: RichToken[] = [];
@@ -118,8 +129,12 @@ export function parseRichText(input: string): RichToken[] {
     return tokens;
 }
 
+// ─────────────────────────────────────────────────────────────
+// Parser inline - processa formatação dentro de uma linha
+// Parâmetro skipCodeBlock: quando true, não processa ``` (útil para prompt)
+// ─────────────────────────────────────────────────────────────
 
-export function parseInlineRichText(input: string): RichToken[] {
+export function parseInlineRichText(input: string, skipCodeBlock: boolean = false): RichToken[] {
     const tokens: RichToken[] = [];
 
     let state: ParserState = 'NORMAL';
@@ -138,8 +153,16 @@ export function parseInlineRichText(input: string): RichToken[] {
 
     while (i < input.length) {
 
-        /* ───────────── CODE BLOCK START ───────────── */
+        /* ───────────── CODE BLOCK (```) ───────────── */
+        // Se skipCodeBlock, trata ``` como texto normal (pula os 3 de uma vez)
         if (state === 'NORMAL' && input.startsWith('```', i)) {
+            if (skipCodeBlock) {
+                buffer += '```';
+                i += 3;
+                continue;
+            }
+
+            // Processa code block normalmente
             flushText();
             codeBlockStart = '```';
             i += 3;
@@ -370,15 +393,11 @@ export function parseInlineRichText(input: string): RichToken[] {
     /* ───────────── FLUSH ───────────── */
     if (buffer) {
         if (state === 'INLINE_CODE') {
+            // Inline code não fechado - retorna como texto normal incluindo o backtick inicial
             tokens.push({ type: 'text', value: '`' + buffer });
         } else if (state === 'CODE_BLOCK') {
-            tokens.push({
-                type: 'code-block',
-                language: codeLang.trim() || 'plain',
-                value: buffer,
-                markerStart: codeBlockStart,
-                markerEnd: '',
-            });
+            // Code block não fechado - retorna como texto normal
+            tokens.push({ type: 'text', value: codeBlockStart + buffer });
         } else {
             tokens.push({ type: 'text', value: buffer });
         }
