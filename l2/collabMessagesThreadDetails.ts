@@ -1,6 +1,6 @@
 /// <mls fileReference="_102025_/l2/collabMessagesThreadDetails.ts" enhancement="_102027_/l2/enhancementLit" />
 
-import { html, repeat, ifDefined, nothing } from 'lit';
+import { html, repeat, ifDefined, nothing, until } from 'lit';
 import { customElement, property, state, query } from 'lit/decorators.js';
 
 import { updateThread, getUser, deleteAllMessagesFromThread } from '/_102025_/l2/collabMessagesIndexedDB.js';
@@ -598,25 +598,42 @@ export class CollabMessagesThreadDetails extends StateLitElement {
 
                         const agentName = agentOC.alias || agentOC.agentId || 'Unknown';
                         const avatarUrl = generateAgentAvatar(agentName);
+                        const userPromise = getUser(agentOC.collabUserId);
 
                         return html`
                             <li>
-                                <img src="${avatarUrl}" 
-                                     alt="${agentName}" 
-                                     width="32" 
-                                     height="32" />
+                                ${until(
+                            userPromise.then(user => html`
+                                                    <img src="${user?.avatar_url || avatarUrl}" 
+                                                    alt="${user?.name}" 
+                                                    width="32" 
+                                                    height="32" />
+                                                `),
+                            html`<img src="${avatarUrl}" 
+                                                    alt="${agentName}" 
+                                                    width="32" 
+                                                    height="32" />`
+                        )}    
                                 <div class="agent-info">
-                                    <small class="agent-name">${agentName}<b>(${agentOC.enabled ? 'active' : 'disabled'})</b></small>
-                    
+                                    <small class="agent-name">
+                                        ${agentName}
+                                        <b>(${agentOC.enabled ? 'active' : 'disabled'})</b>
+                                    </small>
                                 </div>
+
                                 ${!isDm ? html`
                                     <div class="agent-actions">
-                                        <button class=${agentOC.enabled ? 'remove' : 'activate'}>
-                                            ${agentOC.enabled ? this.msg.disable : this.msg.active}
+                                        <button
+                                            class="remove"
+                                            @click=${()=> this.removeAgentOpenClaw(agentOC)}
+                                         >
+
+                                         ${this.isLoadingAgents ? html`<span class="loader"></span>` : html`${this.msg.remove}`}
+                                            
                                         </button>
                                     </div>
                                 ` : nothing}
-                            
+
                             </li>
                         `;
                     }) as any
@@ -731,7 +748,7 @@ export class CollabMessagesThreadDetails extends StateLitElement {
         <div class="form-actions">
             <button 
                 class="btn-save" 
-                @click=${this.saveAgent}
+                @click=${this.saveAgentOpenClaw}
                 ?disabled=${!this.selectedIntegrationId || !this.selectedAgentId || this.isLoadingAgents}
             >
                 ${this.isLoadingAgents ? html`<span class="loader"></span>` : html`${collab_floppy_disk} ${this.msg.btnSaveAgent}`}
@@ -751,7 +768,6 @@ export class CollabMessagesThreadDetails extends StateLitElement {
         return null;
     }
 
-
     private openAgentForm() {
         this.showAgentForm = true;
         this.selectedIntegrationId = '';
@@ -766,7 +782,72 @@ export class CollabMessagesThreadDetails extends StateLitElement {
         this.selectedAgentId = '';
     }
 
-    private async saveAgent() {
+    private async addAgentOpenClawInThread(agent: msg.IOpenClawAgent, integration: msg.IOpenClawIntegration) {
+        if (!this.editedThreadDetails || !this.threadDetails || !this.userId) {
+            throw new Error('Invalid thread detais')
+        };
+
+        const params: msg.RequestAddOrUpdateThreadOpenClawAgent = {
+            action: 'addOrUpdateThreadOpenClawAgent',
+            userId: this.userId,
+            collabUserId: agent.collabUserId,
+            agentId: agent.id,
+            alias: agent.name,
+            connectorId: integration.connectorId,
+            threadId: this.threadDetails.thread.threadId,
+            enabled: true,
+        }
+
+        const result = await msgAddOrUpdateThreadOpenClawAgent(params);
+
+        if (!result.success || !result.response?.thread) {
+            throw new Error(
+                result.error || `Failed to add open claw agent: ${agent.name} in thread`
+            );
+        }
+
+        return result.response.thread;
+
+    }
+
+    private async addIntegrationOpenClawInThread(agent: msg.IOpenClawAgent, integration: msg.IOpenClawIntegration) {
+        if (!this.editedThreadDetails || !this.threadDetails || !this.userId) {
+            throw new Error('Invalid thread detais')
+        };
+
+        const integrationId = generateUUIDv7();
+        const inboundToken = generateUUIDv7();
+
+        const threadIntegration: msg.ThreadIntegration = {
+            integrationId,
+            type: 'openclaw',
+            status: 'active',
+            config: {
+                url: integration.url,
+                bearerToken: integration.bearerToken,
+                inboundToken,
+                agentId: agent.id,
+                sessionId: undefined
+            },
+            triggers: []
+        };
+
+        const result = await msgAddOrUpdateThreadIntegration({
+            threadId: this.threadDetails.thread.threadId,
+            userId: this.userId,
+            ...threadIntegration
+        });
+
+        if (!result.success || !result.response?.thread) {
+            throw new Error(
+                result.error || 'Failed to add agent to thread.'
+            );
+        }
+        return result.response.thread;
+
+    }
+
+    private async saveAgentOpenClaw() {
         this.labelErrorAgent = '';
         this.labelOkAgent = '';
 
@@ -787,81 +868,54 @@ export class CollabMessagesThreadDetails extends StateLitElement {
         this.isLoadingAgents = true;
 
         try {
-            const inboundToken = generateUUIDv7();
-            const integrationId = generateUUIDv7();
 
-            const params: msg.RequestAddOrUpdateThreadOpenClawAgent = {
-                action: 'addOrUpdateThreadOpenClawAgent',
-                userId: this.userId,
-                collabUserId: agent.collabUserId,
-                agentId: agent.id,
-                alias: agent.name,
-                connectorId: integration.connectorId,
-                threadId: this.threadDetails.thread.threadId,
-                enabled: true,
-            }
-
-            const result = await msgAddOrUpdateThreadOpenClawAgent(params);
-
-            if (!result.success || !result.response?.thread) {
-                throw new Error(
-                    result.error || `Failed to add open claw agent: ${agent.name} in thread`
-                );
-            }
-
-            const thread = result.response.thread;
+            let thread = await this.addAgentOpenClawInThread(agent, integration);
             this.editedThreadDetails.thread = { ...thread };
             const threadCache = await updateThread(thread.threadId, thread);
             notifyThreadChange(threadCache);
-
-            this.labelOkAgent =
-                this.msg.successAddAgent || 'Agent added successfully.';
-
-            /*
-            const threadIntegration: msg.ThreadIntegration = {
-                integrationId,
-                type: 'openclaw',
-                status: 'active',
-                config: {
-                    url: integration.url,
-                    bearerToken: integration.bearerToken,
-                    inboundToken,
-                    agentId: agent.id,
-                    sessionId: undefined
-                },
-                triggers: []
-            };
-
-            const result = await msgAddOrUpdateThreadIntegration({
-                threadId: this.threadDetails.thread.threadId,
-                userId: this.userId,
-                ...threadIntegration
-            });
-
-            if (!result.success || !result.response?.thread) {
-                throw new Error(
-                    result.error || 'Failed to add agent to thread.'
-                );
-            }
-
-            
-
-            const thread = result.response.thread;
-
-            this.editedThreadDetails.thread = { ...thread };
-
-            const threadCache = await updateThread(thread.threadId, thread);
-            notifyThreadChange(threadCache);
-
-            this.labelOkAgent =
-                this.msg.successAddAgent || 'Agent added successfully.';
-*/
+            this.labelOkAgent = this.msg.successAddAgent || 'Agent added successfully.';
             this.closeAgentForm();
             this.requestUpdate();
 
         } catch (err: any) {
             this.labelErrorAgent =
                 err?.message || 'An unexpected error occurred while adding the agent.';
+        } finally {
+            this.isLoadingAgents = false;
+        }
+    }
+
+    private async removeAgentOpenClaw(agentOpenClaw: msg.OpenClawAgentBinding) {
+
+        if (!this.editedThreadDetails || !this.threadDetails || !this.userId) {
+            throw new Error('Invalid thread detais')
+        };
+
+        this.isLoadingAgents = true;
+        try {
+
+            let result = await msgRemoveThreadOpenClawAgent({
+                userId: this.userId,
+                threadId: this.threadDetails.thread.threadId,
+                alias: agentOpenClaw.alias
+            });
+
+            if (!result.success || !result.response?.thread) {
+                throw new Error(
+                    result.error || 'Failed to remove agent from thread.'
+                );
+            }
+
+            const thread = result.response.thread;
+            this.editedThreadDetails.thread = { ...thread };
+            const threadCache = await updateThread(thread.threadId, thread);
+            notifyThreadChange(threadCache);
+            this.labelOkAgent = this.msg.successRemoveAgent || 'Agent removed successfully.';
+            this.requestUpdate();
+
+        } catch (err: any) {
+            this.labelErrorAgent =
+                err?.message || 'An unexpected error occurred while removing the agent.';
         } finally {
             this.isLoadingAgents = false;
         }
