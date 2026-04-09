@@ -5,27 +5,9 @@ import { customElement, property } from 'lit/decorators.js';
 
 import * as msg from '/_102025_/l2/shared/interfaces.js';
 import { StateLitElement } from '/_102029_/l2/stateLitElement.js';
+import { parseRichText, RichToken } from '/_102025_/l2/collabMessagesRichTextParser.js';
 
 import '/_102025_/l2/collabMessagesTextCode.js';
-
-export type SlackToken =
-    | { type: 'text'; value: string }
-    | { type: 'inline-code'; value: string }
-    | { type: 'code-block'; language: string; value: string }
-    | { type: 'bold'; value: string }
-    | { type: 'italic'; value: string }
-    | { type: 'strike'; value: string }
-    | { type: 'mention'; value: string; userId: string }
-    | { type: 'channel'; value: string }
-    | { type: 'agent'; value: string }
-    | { type: 'command'; value: string }
-    | { type: 'help'; value: string }
-    | { type: 'link'; text: string; url: string }
-    | { type: 'raw-link'; url: string }
-    | { type: 'blockquote'; children: SlackToken[] }
-    | { type: 'list'; ordered: boolean; items: SlackToken[][] };
-
-type ParserState = 'NORMAL' | 'INLINE_CODE' | 'CODE_BLOCK';
 
 /// **collab_i18n_start**
 const message_pt = {
@@ -63,19 +45,25 @@ export class CollabMessagesRichPreviewText102025 extends StateLitElement {
 
     @property({ type: String }) text = ``;
 
+    @property({ type: Boolean }) showMarkers: boolean = false;
+
     render() {
         const lang = this.getMessageKey(messages);
         this.msg = messages[lang];
-        const tokens = this.parseSlackMarkdown(this.text);
-        return this.renderSlackTokens(tokens);
+        const tokens = parseRichText(this.text);
+        return this.renderTokens(tokens);
     }
 
-
-    private renderSlackTokens(tokens: SlackToken[]): any {
+    private renderTokens(tokens: RichToken[]): any {
         return html`${tokens.map(token => this.renderToken(token))}`;
     }
 
-    private renderToken(token: SlackToken) {
+    private renderMarker(marker?: string) {
+        if (!this.showMarkers || !marker) return html``;
+        return html`<span class="marker">${marker}</span>`;
+    }
+
+    private renderToken(token: RichToken) {
         switch (token.type) {
             case 'text': return this.renderText(token);
             case 'bold': return this.renderBold(token);
@@ -107,23 +95,31 @@ export class CollabMessagesRichPreviewText102025 extends StateLitElement {
         `;
     }
 
-    private renderBold(token: { value: string }) {
-        return html`<strong>${token.value}</strong>`;
+    private renderBold(token: { value: string; markerStart: string; markerEnd: string }) {
+        return html`${this.renderMarker(token.markerStart)}<strong>${token.value}</strong>${this.renderMarker(token.markerEnd)}`;
     }
 
-    private renderItalic(token: { value: string }) {
-        return html`<em>${token.value}</em>`;
+    private renderItalic(token: { value: string; markerStart: string; markerEnd: string }) {
+        return html`${this.renderMarker(token.markerStart)}<em>${token.value}</em>${this.renderMarker(token.markerEnd)}`;
     }
 
-    private renderStrike(token: { value: string }) {
-        return html`<del>${token.value}</del>`;
+    private renderStrike(token: { value: string; markerStart: string; markerEnd: string }) {
+        return html`${this.renderMarker(token.markerStart)}<del>${token.value}</del>${this.renderMarker(token.markerEnd)}`;
     }
 
-    private renderInlineCode(token: { value: string }) {
-        return html`<code class="inline-code">${token.value}</code>`;
+    private renderInlineCode(token: { value: string; markerStart: string; markerEnd: string }) {
+        return html`${this.renderMarker(token.markerStart)}<code class="inline-code">${token.value}</code>${this.renderMarker(token.markerEnd)}`;
     }
 
-    private renderCodeBlock(token: { language: string; value: string }) {
+    private renderCodeBlock(token: { language: string; value: string; markerStart: string; markerEnd: string }) {
+        if (this.showMarkers) {
+            return html`
+                ${this.renderMarker(token.markerStart)}
+                <code class="inline-code">${token.value}</code>
+                ${this.renderMarker(token.markerEnd)}
+            `;
+        }
+        
         return html`
             <div class="collab-md-codeblock-card">
             <div class="collab-md-codeblock-header">
@@ -156,7 +152,7 @@ export class CollabMessagesRichPreviewText102025 extends StateLitElement {
         `;
     }
 
-    private renderMention(token: { value: string }) {
+    private renderMention(token: { value: string; userId: string }) {
         const user = this.allUsers?.find(
             u => u.name.toLowerCase() === token.value.toLowerCase()
         );
@@ -257,7 +253,6 @@ export class CollabMessagesRichPreviewText102025 extends StateLitElement {
         `;
     }
 
-
     private renderCommand(token: { value: string }) {
         const fullCommand = `/${token.value}`;
         const isValid = this.allCommands?.includes(fullCommand);
@@ -314,27 +309,27 @@ export class CollabMessagesRichPreviewText102025 extends StateLitElement {
         `;
     }
 
-    private renderBlockquote(token: { children: SlackToken[] }) {
+    private renderBlockquote(token: { children: RichToken[] }) {
         return html`
             <blockquote>
-            ${this.renderSlackTokens(token.children)}
+            ${this.renderTokens(token.children)}
             </blockquote>
         `;
     }
 
-    private renderList(token: { ordered: boolean; items: SlackToken[][] }) {
+    private renderList(token: { ordered: boolean; items: RichToken[][] }) {
         return token.ordered
             ? html`
                 <ol>
                 ${token.items.map(
-                item => html`<li>${this.renderSlackTokens(item)}</li>`
+                item => html`<li>${this.renderTokens(item)}</li>`
             )}
                 </ol>
             `
             : html`
                 <ul>
                 ${token.items.map(
-                item => html`<li>${this.renderSlackTokens(item)}</li>`
+                item => html`<li>${this.renderTokens(item)}</li>`
             )}
                 </ul>
             `;
@@ -353,361 +348,4 @@ export class CollabMessagesRichPreviewText102025 extends StateLitElement {
 
         if (e.target) (e.target as HTMLElement).innerText = `${this.msg.copied}!`; setTimeout(() => { (e.target as HTMLElement).innerText = `${this.msg.copy}`; }, 1200);
     }
-
-    private parseSlackMarkdown(input: string): SlackToken[] {
-        const tokens: SlackToken[] = [];
-        const lines = input.split(/\r?\n/);
-
-        let i = 0;
-
-        while (i < lines.length) {
-            const line = lines[i];
-
-            /* ───── CODE BLOCK (delegado ao inline parser) ───── */
-            if (line.startsWith('```')) {
-                // junta tudo até fechar ```
-                let block = line + '\n';
-                i++;
-
-                while (i < lines.length && !lines[i].startsWith('```')) {
-                    block += lines[i] + '\n';
-                    i++;
-                }
-
-                if (i < lines.length) {
-                    block += lines[i];
-                    i++;
-                }
-
-                tokens.push(...this.parseInlineSlackMarkdown(block));
-                continue;
-            }
-
-            /* ───── BLOCKQUOTE ───── */
-            if (line.startsWith('>')) {
-                const quoteLines: string[] = [];
-
-                while (i < lines.length && lines[i].startsWith('>')) {
-                    quoteLines.push(lines[i].replace(/^>\s?/, ''));
-                    i++;
-                }
-
-                tokens.push({
-                    type: 'blockquote',
-                    children: this.parseSlackMarkdown(quoteLines.join('\n')),
-                });
-
-                continue;
-            }
-
-            /* ───── UNORDERED LIST ───── */
-            if (/^- /.test(line)) {
-                const items: SlackToken[][] = [];
-
-                while (i < lines.length && /^- /.test(lines[i])) {
-                    items.push(
-                        this.parseInlineSlackMarkdown(
-                            lines[i].replace(/^- /, '')
-                        )
-                    );
-                    i++;
-                }
-
-                tokens.push({
-                    type: 'list',
-                    ordered: false,
-                    items,
-                });
-
-                continue;
-            }
-
-            /* ───── ORDERED LIST ───── */
-            if (/^\d+\. /.test(line)) {
-                const items: SlackToken[][] = [];
-
-                while (i < lines.length && /^\d+\. /.test(lines[i])) {
-                    items.push(
-                        this.parseInlineSlackMarkdown(
-                            lines[i].replace(/^\d+\. /, '')
-                        )
-                    );
-                    i++;
-                }
-
-                tokens.push({
-                    type: 'list',
-                    ordered: true,
-                    items,
-                });
-
-                continue;
-            }
-
-            /* ───── NORMAL LINE ───── */
-            if (line !== '') {
-                tokens.push(...this.parseInlineSlackMarkdown(line));
-            }
-
-            tokens.push({ type: 'text', value: '\n' });
-            i++;
-        }
-
-        return tokens;
-    }
-
-
-    private parseInlineSlackMarkdown(input: string): SlackToken[] {
-        const tokens: SlackToken[] = [];
-
-        let state: ParserState = 'NORMAL';
-        let buffer = '';
-        let codeLang = '';
-
-        let i = 0;
-
-        const matchRawLink = (s: string) =>
-            s.match(/^(https?:\/\/[^\s]+|www\.[^\s]+)/);
-
-        const flushText = () => {
-            if (buffer) {
-                tokens.push({ type: 'text', value: buffer });
-                buffer = '';
-            }
-        };
-
-        const isBoundary = (char?: string) =>
-            !char || /\s/.test(char);
-
-        while (i < input.length) {
-
-            /* ───────────── CODE BLOCK START ───────────── */
-            if (state === 'NORMAL' && input.startsWith('```', i)) {
-                flushText();
-                i += 3;
-
-                while (i < input.length && input[i] !== '\n') {
-                    codeLang += input[i++];
-                }
-                if (input[i] === '\n') i++;
-
-                state = 'CODE_BLOCK';
-                buffer = '';
-                continue;
-            }
-
-            /* ───────────── CODE BLOCK END ───────────── */
-            if (state === 'CODE_BLOCK' && input.startsWith('```', i)) {
-                tokens.push({
-                    type: 'code-block',
-                    language: codeLang.trim() || 'plain',
-                    value: buffer,
-                });
-                buffer = '';
-                codeLang = '';
-                state = 'NORMAL';
-                i += 3;
-                continue;
-            }
-
-            /* ───────────── INLINE CODE ───────────── */
-            if (state === 'NORMAL' && input[i] === '`') {
-                flushText();
-                state = 'INLINE_CODE';
-                buffer = '';
-                i++;
-                continue;
-            }
-
-            if (state === 'INLINE_CODE' && input[i] === '`') {
-                tokens.push({ type: 'inline-code', value: buffer });
-                buffer = '';
-                state = 'NORMAL';
-                i++;
-                continue;
-            }
-
-            /* ───────────── FORMATTING (NORMAL ONLY) ───────────── */
-            if (state === 'NORMAL') {
-
-                // bold **
-                if (input.startsWith('**', i)) {
-                    const end = input.indexOf('**', i + 2);
-                    if (end !== -1) {
-                        flushText();
-                        tokens.push({
-                            type: 'bold',
-                            value: input.slice(i + 2, end),
-                        });
-                        i = end + 2;
-                        continue;
-                    }
-                }
-
-                // strike ~~
-                if (input.startsWith('~~', i)) {
-                    const end = input.indexOf('~~', i + 2);
-                    if (end !== -1) {
-                        flushText();
-                        tokens.push({
-                            type: 'strike',
-                            value: input.slice(i + 2, end),
-                        });
-                        i = end + 2;
-                        continue;
-                    }
-                }
-
-                // italic _
-                if (input[i] === '_') {
-                    const end = input.indexOf('_', i + 1);
-                    if (end !== -1) {
-                        flushText();
-                        tokens.push({
-                            type: 'italic',
-                            value: input.slice(i + 1, end),
-                        });
-                        i = end + 1;
-                        continue;
-                    }
-                }
-
-                
-                // agent @@agent
-                if (
-                    state === 'NORMAL' &&
-                    input[i] === '@' &&
-                    input[i + 1] === '@' &&
-                    isBoundary(input[i - 1])
-                ) {
-                    const match = input.slice(i + 2).match(/^[a-zA-Z0-9_-]+/);
-                    if (match) {
-                        flushText();
-                        tokens.push({
-                            type: 'agent',
-                            value: match[0],
-                        });
-                        i += match[0].length + 2;
-                        continue;
-                    }
-                }
-
-                // mention markdown [@Name](userId)
-                if (input[i] === '[' && input[i + 1] === '@') {
-                    const closeText = input.indexOf(']', i + 2);
-                    const openParen = input[closeText + 1] === '(' ? closeText + 1 : -1;
-                    const closeParen = openParen !== -1
-                        ? input.indexOf(')', openParen + 1)
-                        : -1;
-
-                    if (closeText !== -1 && openParen !== -1 && closeParen !== -1) {
-                        flushText();
-
-                        const name = input.slice(i + 2, closeText); // remove [@
-                        const userId = input.slice(openParen + 1, closeParen);
-
-                        tokens.push({
-                            type: 'mention',
-                            value: name,
-                            userId,
-                        });
-
-                        i = closeParen + 1;
-                        continue;
-                    }
-                }
-
-                // channel #
-                if (input[i] === '#' && isBoundary(input[i - 1])) {
-                    const match = input.slice(i + 1).match(/^[a-zA-Z0-9_-]+/);
-                    if (match) {
-                        flushText();
-                        tokens.push({
-                            type: 'channel',
-                            value: match[0],
-                        });
-                        i += match[0].length + 1;
-                        continue;
-                    }
-                }
-
-                // command /
-                if (input[i] === '/' && isBoundary(input[i - 1])) {
-                    const match = input.slice(i + 1).match(/^[a-zA-Z0-9_-]+/);
-                    if (match) {
-                        flushText();
-                        tokens.push({
-                            type: 'command',
-                            value: match[0], // sem a barra
-                        });
-                        i += match[0].length + 1;
-                        continue;
-                    }
-                }
-
-                // help ?
-                if (input[i] === '?' && isBoundary(input[i - 1])) {
-                    const match = input.slice(i + 1).match(/^[a-zA-Z0-9_-]+/);
-                    if (match) {
-                        flushText();
-                        tokens.push({ type: 'help', value: match[0] });
-                        i += match[0].length + 1;
-                        continue;
-                    }
-                }
-
-                // markdown link [text](url)
-                if (state === 'NORMAL' && input[i] === '[') {
-                    const closeText = input.indexOf(']', i + 1);
-                    const openParen = input[closeText + 1] === '(' ? closeText + 1 : -1;
-                    const closeParen = openParen !== -1 ? input.indexOf(')', openParen + 1) : -1;
-
-                    if (closeText !== -1 && openParen !== -1 && closeParen !== -1) {
-                        flushText();
-                        const text = input.slice(i + 1, closeText);
-                        const url = input.slice(openParen + 1, closeParen);
-                        tokens.push({ type: 'link', text, url });
-                        i = closeParen + 1;
-                        continue;
-                    }
-                }
-
-                // raw link
-                if (state === 'NORMAL' && isBoundary(input[i - 1])) {
-                    const match = matchRawLink(input.slice(i));
-                    if (match) {
-                        flushText();
-                        const url = match[0];
-                        tokens.push({ type: 'raw-link', url });
-                        i += url.length;
-                        continue;
-                    }
-                }
-
-
-            }
-
-            /* ───────────── DEFAULT CHAR ───────────── */
-            buffer += input[i];
-            i++;
-        }
-
-        /* ───────────── FLUSH ───────────── */
-        if (buffer) {
-            if (state === 'INLINE_CODE') {
-                tokens.push({ type: 'text', value: '`' + buffer });
-            } else if (state === 'CODE_BLOCK') {
-                tokens.push({
-                    type: 'code-block',
-                    language: codeLang.trim() || 'plain',
-                    value: buffer,
-                });
-            } else {
-                tokens.push({ type: 'text', value: buffer });
-            }
-        }
-
-        return tokens;
-    }
-
 }

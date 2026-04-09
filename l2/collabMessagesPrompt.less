@@ -17,21 +17,157 @@ collab-messages-prompt-102025 {
         align-items: center;
         padding: 8px 4px;
 
-        textarea {
-            padding: 4px 4px;
-            border: 1px solid #d1d1d1;
-            background-color: #fff;
-            color: #000;
-            font-size: 14px;
-            transition: border-color .3s ease;
+        .textarea-container {
+            position: relative;
             width: 100%;
-            border-radius: 8px;
-            outline: none;
-            overflow-y: auto;
-            resize: none;
-            max-height: 200px;
-            min-height: 40px;
-            line-height: 1.2;
+            
+            textarea {
+                padding: 4px 4px;
+                border: 1px solid #d1d1d1;
+                background-color: #fff;
+                color: #000;
+                font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+                font-size: 14px;
+                line-height: 1.4;
+                letter-spacing: normal;
+                word-spacing: normal;
+                transition: border-color .3s ease;
+                width: 100%;
+                border-radius: 8px;
+                outline: none;
+                overflow-y: auto;
+                resize: none;
+                max-height: 200px;
+                min-height: 40px;
+                box-sizing: border-box;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                -webkit-text-size-adjust: 100%;
+            }
+            
+            // ─────────────────────────────────────────────
+            // Rich Preview Mode
+            // ─────────────────────────────────────────────
+            &.rich-preview-enabled {
+                textarea {
+                    background: transparent;
+                    color: transparent;
+                    caret-color: @text-primary-color;
+                    position: relative;
+                    z-index: 2;
+                    
+                    &::selection {
+                        background: rgba(24, 144, 255, 0.3);
+                        color: transparent;
+                    }
+                    
+                    &::placeholder {
+                        color: @grey-color-darker;
+                    }
+                }
+                
+                .prompt-overlay {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    pointer-events: none;
+                    overflow-y: auto;
+                    overflow-x: hidden;
+                    z-index: 1;
+                    background-color: #fff;
+                    color: @text-primary-color;
+                    
+                    // ⚠️ CRÍTICO: Estas propriedades DEVEM ser idênticas ao textarea
+                    padding: 4px 4px;
+                    border: 1px solid transparent;
+                    border-radius: 8px;
+                    box-sizing: border-box;
+                    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+                    font-size: 14px;
+                    line-height: 1.4;
+                    letter-spacing: normal;
+                    word-spacing: normal;
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                    word-break: break-word;
+                    -webkit-text-size-adjust: 100%;
+                    text-rendering: auto;
+                    
+                    // Todos os elementos internos herdam as mesmas métricas
+                    * {
+                        font-family: inherit;
+                        font-size: inherit;
+                        line-height: inherit;
+                        letter-spacing: inherit;
+                        word-spacing: inherit;
+                    }
+                    
+                    // Marcadores sutis (só cor muda, não tamanho)
+                    .marker {
+                        color: @grey-color-darker;
+                        font-weight: inherit;
+                        font-style: normal;
+                        text-decoration: none;
+                        opacity: 0.5;
+                    }
+                    
+                    // Inline code - SEM mudança de fonte para manter alinhamento
+                    .inline-code {
+                        background-color: @grey-color-light;
+                        color: #d63384;
+                        border-radius: 2px;
+                        // NÃO mudar font-family ou font-size aqui!
+                    }
+                    
+                    // Mentions
+                    .mention-preview {
+                        color: @active-color;
+                    }
+                    
+                    // Agents
+                    .agent-preview {
+                        color: @info-color;
+                    }
+                    
+                    // Channels
+                    .channel-preview {
+                        color: #1976d2;
+                    }
+                    
+                    // Commands
+                    .command-preview {
+                        color: @active-color;
+                    }
+                    
+                    // Help
+                    .help-preview {
+                        color: @success-color;
+                    }
+                    
+                    // Links
+                    .link-preview {
+                        color: @link-color;
+                    }
+                    
+                    // Bold - agora pode usar bold com fonte monospace
+                    strong {
+                        font-weight: bold;
+                        color: @text-primary-color;
+                    }
+                    
+                    em {
+                        font-style: italic;
+                        color: @text-primary-color;
+                    }
+                    
+                    del {
+                        text-decoration: line-through;
+                        color: @text-primary-color-lighter;
+                    }
+                }
+            }
         }
 
         button {

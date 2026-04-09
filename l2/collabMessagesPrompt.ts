@@ -4,15 +4,12 @@ import { html, ifDefined, nothing } from 'lit';
 import { customElement, property, state, query, } from 'lit/decorators.js';
 import { collab_arrow_up_long } from '/_102025_/l2/collabMessagesIcons.js';
 import { getThread, listUsers } from '/_102025_/l2/collabMessagesIndexedDB.js';
-
 import { emojiList } from '/_102025_/l2/collabMessagesEmojis.js'
-
 import { environment } from '/_102036_/l2/environmentContract.js';
 import * as msg from '/_102025_/l2/shared/interfaces.js';
 import { StateLitElement } from '/_102029_/l2/stateLitElement.js';
-
 import '/_102025_/l2/collabMessagesAvatar.js';
-
+import { parseInlineRichText, RichToken } from '/_102025_/l2/collabMessagesRichTextParser.js';
 
 /// **collab_i18n_start**
 const message_pt = {
@@ -39,9 +36,13 @@ export class CollabMessagesPrompt extends StateLitElement {
     private msg: MessageType = messages['en'];
 
     @query('textarea') textArea: HTMLTextAreaElement | undefined;
+    @query('.prompt-overlay') overlayElement?: HTMLElement;
     @query('.mention-suggestions') mentionSuggestionsElement?: HTMLElement;
     @query('.wrapper') wrapper?: HTMLElement;
     @property() text: string = '';
+
+    @property() heightInitial: string = '60px';
+
     @state() actualMention?: IMentions;
     @state() mentionActive: boolean = false;
     @state() mentionQuery: string = '';
@@ -64,6 +65,7 @@ export class CollabMessagesPrompt extends StateLitElement {
     @property() threadId?: string;
     @property() placeholder?: string;
     @property() scope?: string;
+
     @property({
         type: Boolean,
         converter: (value: string | null) => value === 'true'
@@ -73,6 +75,11 @@ export class CollabMessagesPrompt extends StateLitElement {
         type: Boolean,
         converter: (value: string | null) => value === 'true'
     }) acceptAutoCompleteAgents?: boolean = false;
+
+    @property({
+        type: Boolean,
+        converter: (value: string | null) => value === 'true'
+    }) enableRichPreview?: boolean = false;
 
     connectedCallback() {
         super.connectedCallback();
@@ -192,38 +199,33 @@ export class CollabMessagesPrompt extends StateLitElement {
     }
 
     private calculatePosition() {
-        if (!this.mentionSuggestionsElement || !this.wrapper) return;
+        if (!this.mentionSuggestionsElement || !this.wrapper || !this.textArea) return;
+
         const coords = this.getCaretCoordinates();
-        const bound1 = this.wrapper.getBoundingClientRect();
-        const bound2 = this.mentionSuggestionsElement.getBoundingClientRect();
         if (!coords) return;
 
-        const viewport = window.visualViewport;
+        const wrapperRect = this.wrapper.getBoundingClientRect();
+        const suggestionsHeight = this.mentionSuggestionsElement.offsetHeight || 150;
 
-        let x = coords.x;
-        let y = coords.y;
-
-        if (viewport) {
-            x = coords.x - viewport.offsetLeft;
-            y = coords.y - viewport.offsetTop;
-        }
+        const left = Math.max(wrapperRect.left, Math.min(coords.x, wrapperRect.right - 200));
+        const top = wrapperRect.top - suggestionsHeight - 4;
 
         this.mentionSuggestionsElement.style.position = "fixed";
-        this.mentionSuggestionsElement.style.left = `${x}px`;
-        this.mentionSuggestionsElement.style.top = `${y - bound1.height - bound2.height - 4}px`;
+        this.mentionSuggestionsElement.style.left = `${left}px`;
+        this.mentionSuggestionsElement.style.top = `${top}px`;
     }
 
     private adjustTextAreaHeight() {
         const maxHeight = 200;
-        const minHeight = 40;
+        const minHeight = +this.heightInitial || 60;
         if (this.textArea) {
             const prevHeight = this.textArea.offsetHeight;
-            if (this.text === '') {
-                this.textArea.style.height = `${minHeight}px`;
-            } else {
-                this.textArea.style.height = 'auto';
-                this.textArea.style.height = Math.min(this.textArea.scrollHeight, maxHeight) + 'px';
-            }
+
+    
+            this.textArea.style.height = 'auto';
+            const newCalculatedHeight = Math.max(minHeight, Math.min(this.textArea.scrollHeight, maxHeight));
+            this.textArea.style.height = `${newCalculatedHeight}px`;
+
             const newHeight = this.textArea.offsetHeight;
             if (newHeight !== prevHeight) {
                 this.dispatchEvent(new CustomEvent('textarea-resize', {
@@ -236,8 +238,54 @@ export class CollabMessagesPrompt extends StateLitElement {
             }
 
             this.calculatePosition();
-
         }
+    }
+
+    private handleScroll() {
+        if (this.overlayElement && this.textArea) {
+            this.overlayElement.scrollTop = this.textArea.scrollTop;
+        }
+    }
+
+
+    private renderRichToken(token: RichToken) {
+        const marker = (m?: string) => m ? html`<span class="marker">${m}</span>` : nothing;
+
+        switch (token.type) {
+            case 'text':
+                return html`${token.value.split('\n').map((part, idx) =>
+                    idx === 0 ? html`${part}` : html`<br />${part}`
+                )}`;
+            case 'bold':
+                return html`${marker(token.markerStart)}<strong>${token.value}</strong>${marker(token.markerEnd)}`;
+            case 'italic':
+                return html`${marker(token.markerStart)}<em>${token.value}</em>${marker(token.markerEnd)}`;
+            case 'strike':
+                return html`${marker(token.markerStart)}<del>${token.value}</del>${marker(token.markerEnd)}`;
+            case 'inline-code':
+                return html`${marker(token.markerStart)}<code class="inline-code">${token.value}</code>${marker(token.markerEnd)}`;
+            case 'mention':
+                return html`<span class="mention-preview">@${token.value}</span>`;
+            case 'agent':
+                return html`<span class="agent-preview">@@${token.value}</span>`;
+            case 'channel':
+                return html`<span class="channel-preview">#${token.value}</span>`;
+            case 'command':
+                return html`<span class="command-preview">/${token.value}</span>`;
+            case 'help':
+                return html`<span class="help-preview">?${token.value}</span>`;
+            case 'link':
+                return html`<span class="link-preview">[${token.text}](${token.url})</span>`;
+            case 'raw-link':
+                return html`<span class="link-preview">${token.url}</span>`;
+            default:
+                return html``;
+        }
+    }
+
+    private renderRichOverlay() {
+        const tokens = parseInlineRichText(this.text);
+        return html`${tokens.map(token => this.renderRichToken(token))}`;
     }
 
 
@@ -251,14 +299,20 @@ export class CollabMessagesPrompt extends StateLitElement {
                 ${this.renderReply()}
             
                 <div class="wrapper">
-                    <textarea
-                        .value=${this.text}
-                        @input=${this.handleInput}
-                        @focus=${this.handleFocus}
-                        @keydown=${this.handleKeyDown}
-                        id="prompt_input"
-                        placeholder="${ifDefined(this.placeholder)}">
-                    </textarea>
+                    <div class="textarea-container ${this.enableRichPreview ? 'rich-preview-enabled' : ''}">
+                        ${this.enableRichPreview ? html`
+                            <div class="prompt-overlay">${this.renderRichOverlay()}</div>
+                        ` : ''}
+                        <textarea
+                            .value=${this.text}
+                            @input=${this.handleInput}
+                            @focus=${this.handleFocus}
+                            @keydown=${this.handleKeyDown}
+                            @scroll=${this.handleScroll}
+                            id="prompt_input"
+                            placeholder="${ifDefined(this.placeholder)}">
+                        </textarea>
+                    </div>
                     <button @click=${this.handleSend}>${collab_arrow_up_long}</button>
                     ${this.mentionActive && this.mentionSuggestions.length > 0 ? html`
                         <ul class="mention-suggestions">
@@ -394,14 +448,14 @@ export class CollabMessagesPrompt extends StateLitElement {
     }
 
     private getEmojiSuggestions(query: string): IMentions[] {
-        // Remove :: caso o usuário tenha digitado junto e converte para lowercase
+    
         const q = query.replace(/^::/, '').toLowerCase().trim();
-        if (!q) return []; // se estiver vazio, retorna nada
+        if (!q) return [];
 
         return emojiList
             .filter(e =>
-                e.value.toLowerCase().startsWith(q) ||  // busca pelo value
-                (Array.isArray(e.alias) && e.alias.some(a => a.toLowerCase().includes(q))) // busca pelos aliases
+                e.value.toLowerCase().startsWith(q) || 
+                (Array.isArray(e.alias) && e.alias.some(a => a.toLowerCase().includes(q))) 
             )
             .map(e => ({
                 text: e.text,
@@ -561,5 +615,3 @@ interface IMentions {
     avatar_url?: string | undefined,
     type: 'user' | 'agent' | 'emoji'
 }
-
-

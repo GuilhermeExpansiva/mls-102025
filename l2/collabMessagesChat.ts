@@ -398,14 +398,17 @@ export class CollabMessagesChat extends StateLitElement {
 
         this.lastTopicFilter = e.detail.topic === 'all' ? '' : e.detail.topic;
         this.isChangeTopics = true;
-        if (e.detail.topic === 'all') this.actualMessagesParsed = this.parseMessages(this.actualMessages, this.lastTopicFilter);
-        else this.actualMessagesParsed = this.parseMessages(this.actualMessages, this.lastTopicFilter);
-        await this.updateComplete;
+        this.isSystemChangeScroll = true;
 
-        if (this.messageContainer) {
+        if (e.detail.topic === 'all') {
+            this.actualMessagesParsed = this.parseMessages(this.actualMessages, this.lastTopicFilter);
+        }
+        else this.actualMessagesParsed = this.parseMessages(this.actualMessages, this.lastTopicFilter);
+
+        /*if (this.messageContainer) {
             const newHeight = this.messageContainer.scrollHeight;
             this.messageContainer.scrollTop = newHeight;
-        }
+        }*/
 
     }
 
@@ -421,6 +424,7 @@ export class CollabMessagesChat extends StateLitElement {
             <collab-messages-prompt-102025
                 acceptAutoCompleteAgents="true"
                 acceptAutoCompleteUser="true"
+                enableRichPreview="true"
                 threadId=${this.actualThread?.thread.threadId}
                 .onSend=${this.handleSend.bind(this)}
                 placeholder=${this.msg.promptPlaceholder}
@@ -876,7 +880,8 @@ export class CollabMessagesChat extends StateLitElement {
     }
 
     private async onChatScroll(e: Event) {
-
+        if (this.scrollLock) return;
+        
         this.removeAllModal();
         if (this.isChangeTopics) {
             this.isChangeTopics = false;
@@ -1926,18 +1931,27 @@ export class CollabMessagesChat extends StateLitElement {
     };
 
 
+    private scrollLock = false;
     private async verifyChatScroll() {
-        
-        if (this.messageContainer && (this.isSystemChangeScroll)) {
+        if (!this.messageContainer || !this.isSystemChangeScroll) return;
+        this.scrollLock = true;
+
+        try {
             await this.updateComplete;
-            const target = this.unreadEl;
-            let offset = this.messageContainer.scrollHeight;
             await this.waitingForRenderCodesWebComponents();
-            if (target) target.scrollIntoView({ block: 'center' })
-            else this.messageContainer.scrollTop = offset;
+            await this.nextFrame();
+
+            const target = this.unreadEl;
+            if (target) {
+                target.scrollIntoView({ block: 'center' });
+            } else {
+                this.messageContainer.scrollTop = this.messageContainer.scrollHeight;
+            }
+        } finally {
+            await this.nextFrame();
+            this.scrollLock = false;
             this.isSystemChangeScroll = false;
         }
-
     }
 
     private async delay(ms: number) {

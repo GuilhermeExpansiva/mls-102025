@@ -1,0 +1,388 @@
+/// <mls fileReference="_102025_/l2/collabMessagesRichTextParser.ts" enhancement="_102027_/l2/enhancementLit" />
+
+export type RichToken =
+    | { type: 'text'; value: string }
+    | { type: 'bold'; value: string; markerStart: string; markerEnd: string }
+    | { type: 'italic'; value: string; markerStart: string; markerEnd: string }
+    | { type: 'strike'; value: string; markerStart: string; markerEnd: string }
+    | { type: 'inline-code'; value: string; markerStart: string; markerEnd: string }
+    | { type: 'code-block'; language: string; value: string; markerStart: string; markerEnd: string }
+    | { type: 'mention'; value: string; userId: string }
+    | { type: 'agent'; value: string }
+    | { type: 'channel'; value: string }
+    | { type: 'command'; value: string }
+    | { type: 'help'; value: string }
+    | { type: 'link'; text: string; url: string }
+    | { type: 'raw-link'; url: string }
+    | { type: 'blockquote'; children: RichToken[] }
+    | { type: 'list'; ordered: boolean; items: RichToken[][] };
+
+type ParserState = 'NORMAL' | 'INLINE_CODE' | 'CODE_BLOCK';
+
+const isBoundary = (char?: string): boolean => !char || /\s/.test(char);
+
+const matchRawLink = (s: string): RegExpMatchArray | null =>
+    s.match(/^(https?:\/\/[^\s]+|www\.[^\s]+)/);
+
+
+export function parseRichText(input: string): RichToken[] {
+    const tokens: RichToken[] = [];
+    const lines = input.split(/\r?\n/);
+
+    let i = 0;
+
+    while (i < lines.length) {
+        const line = lines[i];
+
+        /* ───── CODE BLOCK ───── */
+        if (line.startsWith('```')) {
+            let block = line + '\n';
+            i++;
+
+            while (i < lines.length && !lines[i].startsWith('```')) {
+                block += lines[i] + '\n';
+                i++;
+            }
+
+            if (i < lines.length) {
+                block += lines[i];
+                i++;
+            }
+
+            tokens.push(...parseInlineRichText(block));
+            continue;
+        }
+
+        /* ───── BLOCKQUOTE ───── */
+        if (line.startsWith('>')) {
+            const quoteLines: string[] = [];
+
+            while (i < lines.length && lines[i].startsWith('>')) {
+                quoteLines.push(lines[i].replace(/^>\s?/, ''));
+                i++;
+            }
+
+            tokens.push({
+                type: 'blockquote',
+                children: parseRichText(quoteLines.join('\n')),
+            });
+
+            continue;
+        }
+
+        /* ───── UNORDERED LIST ───── */
+        if (/^- /.test(line)) {
+            const items: RichToken[][] = [];
+
+            while (i < lines.length && /^- /.test(lines[i])) {
+                items.push(parseInlineRichText(lines[i].replace(/^- /, '')));
+                i++;
+            }
+
+            tokens.push({
+                type: 'list',
+                ordered: false,
+                items,
+            });
+
+            continue;
+        }
+
+        /* ───── ORDERED LIST ───── */
+        if (/^\d+\. /.test(line)) {
+            const items: RichToken[][] = [];
+
+            while (i < lines.length && /^\d+\. /.test(lines[i])) {
+                items.push(parseInlineRichText(lines[i].replace(/^\d+\. /, '')));
+                i++;
+            }
+
+            tokens.push({
+                type: 'list',
+                ordered: true,
+                items,
+            });
+
+            continue;
+        }
+
+        /* ───── NORMAL LINE ───── */
+        if (line !== '') {
+            tokens.push(...parseInlineRichText(line));
+        }
+
+        tokens.push({ type: 'text', value: '\n' });
+        i++;
+    }
+
+    return tokens;
+}
+
+
+export function parseInlineRichText(input: string): RichToken[] {
+    const tokens: RichToken[] = [];
+
+    let state: ParserState = 'NORMAL';
+    let buffer = '';
+    let codeLang = '';
+    let codeBlockStart = '';
+
+    let i = 0;
+
+    const flushText = () => {
+        if (buffer) {
+            tokens.push({ type: 'text', value: buffer });
+            buffer = '';
+        }
+    };
+
+    while (i < input.length) {
+
+        /* ───────────── CODE BLOCK START ───────────── */
+        if (state === 'NORMAL' && input.startsWith('```', i)) {
+            flushText();
+            codeBlockStart = '```';
+            i += 3;
+
+            while (i < input.length && input[i] !== '\n') {
+                codeLang += input[i++];
+            }
+            codeBlockStart += codeLang;
+            if (input[i] === '\n') {
+                codeBlockStart += '\n';
+                i++;
+            }
+
+            state = 'CODE_BLOCK';
+            buffer = '';
+            continue;
+        }
+
+        /* ───────────── CODE BLOCK END ───────────── */
+        if (state === 'CODE_BLOCK' && input.startsWith('```', i)) {
+            tokens.push({
+                type: 'code-block',
+                language: codeLang.trim() || 'plain',
+                value: buffer,
+                markerStart: codeBlockStart,
+                markerEnd: '```',
+            });
+            buffer = '';
+            codeLang = '';
+            codeBlockStart = '';
+            state = 'NORMAL';
+            i += 3;
+            continue;
+        }
+
+        /* ───────────── INLINE CODE ───────────── */
+        if (state === 'NORMAL' && input[i] === '`') {
+            flushText();
+            state = 'INLINE_CODE';
+            buffer = '';
+            i++;
+            continue;
+        }
+
+        if (state === 'INLINE_CODE' && input[i] === '`') {
+            tokens.push({
+                type: 'inline-code',
+                value: buffer,
+                markerStart: '`',
+                markerEnd: '`',
+            });
+            buffer = '';
+            state = 'NORMAL';
+            i++;
+            continue;
+        }
+
+        /* ───────────── FORMATTING (NORMAL ONLY) ───────────── */
+        if (state === 'NORMAL') {
+
+            // bold **
+            if (input.startsWith('**', i) && isBoundary(input[i - 1])) {
+                const end = input.indexOf('**', i + 2);
+                // Verifica se o fechamento está em uma boundary
+                if (end !== -1 && isBoundary(input[end + 2])) {
+                    flushText();
+                    tokens.push({
+                        type: 'bold',
+                        value: input.slice(i + 2, end),
+                        markerStart: '**',
+                        markerEnd: '**',
+                    });
+                    i = end + 2;
+                    continue;
+                }
+            }
+
+            // strike ~~
+            if (input.startsWith('~~', i) && isBoundary(input[i - 1])) {
+                const end = input.indexOf('~~', i + 2);
+                // Verifica se o fechamento está em uma boundary
+                if (end !== -1 && isBoundary(input[end + 2])) {
+                    flushText();
+                    tokens.push({
+                        type: 'strike',
+                        value: input.slice(i + 2, end),
+                        markerStart: '~~',
+                        markerEnd: '~~',
+                    });
+                    i = end + 2;
+                    continue;
+                }
+            }
+
+            // italic _
+            if (input[i] === '_' && isBoundary(input[i - 1])) {
+                const end = input.indexOf('_', i + 1);
+                // Verifica se o fechamento está em uma boundary (espaço, pontuação ou fim)
+                if (end !== -1 && isBoundary(input[end + 1])) {
+                    flushText();
+                    tokens.push({
+                        type: 'italic',
+                        value: input.slice(i + 1, end),
+                        markerStart: '_',
+                        markerEnd: '_',
+                    });
+                    i = end + 1;
+                    continue;
+                }
+            }
+
+            // agent @@agent
+            if (
+                input[i] === '@' &&
+                input[i + 1] === '@' &&
+                isBoundary(input[i - 1])
+            ) {
+                const match = input.slice(i + 2).match(/^[a-zA-Z0-9_-]+/);
+                if (match) {
+                    flushText();
+                    tokens.push({
+                        type: 'agent',
+                        value: match[0],
+                    });
+                    i += match[0].length + 2;
+                    continue;
+                }
+            }
+
+            // mention markdown [@Name](userId)
+            if (input[i] === '[' && input[i + 1] === '@') {
+                const closeText = input.indexOf(']', i + 2);
+                const openParen = input[closeText + 1] === '(' ? closeText + 1 : -1;
+                const closeParen = openParen !== -1
+                    ? input.indexOf(')', openParen + 1)
+                    : -1;
+
+                if (closeText !== -1 && openParen !== -1 && closeParen !== -1) {
+                    flushText();
+
+                    const name = input.slice(i + 2, closeText);
+                    const userId = input.slice(openParen + 1, closeParen);
+
+                    tokens.push({
+                        type: 'mention',
+                        value: name,
+                        userId,
+                    });
+
+                    i = closeParen + 1;
+                    continue;
+                }
+            }
+
+            // channel #
+            if (input[i] === '#' && isBoundary(input[i - 1])) {
+                const match = input.slice(i + 1).match(/^[a-zA-Z0-9_-]+/);
+                if (match) {
+                    flushText();
+                    tokens.push({
+                        type: 'channel',
+                        value: match[0],
+                    });
+                    i += match[0].length + 1;
+                    continue;
+                }
+            }
+
+            // command /
+            if (input[i] === '/' && isBoundary(input[i - 1])) {
+                const match = input.slice(i + 1).match(/^[a-zA-Z0-9_-]+/);
+                if (match) {
+                    flushText();
+                    tokens.push({
+                        type: 'command',
+                        value: match[0],
+                    });
+                    i += match[0].length + 1;
+                    continue;
+                }
+            }
+
+            // help ?
+            if (input[i] === '?' && isBoundary(input[i - 1])) {
+                const match = input.slice(i + 1).match(/^[a-zA-Z0-9_-]+/);
+                if (match) {
+                    flushText();
+                    tokens.push({ type: 'help', value: match[0] });
+                    i += match[0].length + 1;
+                    continue;
+                }
+            }
+
+            // markdown link [text](url)
+            if (input[i] === '[') {
+                const closeText = input.indexOf(']', i + 1);
+                const openParen = input[closeText + 1] === '(' ? closeText + 1 : -1;
+                const closeParen = openParen !== -1 ? input.indexOf(')', openParen + 1) : -1;
+
+                if (closeText !== -1 && openParen !== -1 && closeParen !== -1) {
+                    flushText();
+                    const text = input.slice(i + 1, closeText);
+                    const url = input.slice(openParen + 1, closeParen);
+                    tokens.push({ type: 'link', text, url });
+                    i = closeParen + 1;
+                    continue;
+                }
+            }
+
+            // raw link
+            if (isBoundary(input[i - 1])) {
+                const match = matchRawLink(input.slice(i));
+                if (match) {
+                    flushText();
+                    const url = match[0];
+                    tokens.push({ type: 'raw-link', url });
+                    i += url.length;
+                    continue;
+                }
+            }
+        }
+
+        /* ───────────── DEFAULT CHAR ───────────── */
+        buffer += input[i];
+        i++;
+    }
+
+    /* ───────────── FLUSH ───────────── */
+    if (buffer) {
+        if (state === 'INLINE_CODE') {
+            tokens.push({ type: 'text', value: '`' + buffer });
+        } else if (state === 'CODE_BLOCK') {
+            tokens.push({
+                type: 'code-block',
+                language: codeLang.trim() || 'plain',
+                value: buffer,
+                markerStart: codeBlockStart,
+                markerEnd: '',
+            });
+        } else {
+            tokens.push({ type: 'text', value: buffer });
+        }
+    }
+
+    return tokens;
+}
