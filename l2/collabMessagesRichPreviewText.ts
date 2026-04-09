@@ -80,7 +80,10 @@ export class CollabMessagesRichPreviewText102025 extends StateLitElement {
             case 'raw-link': return this.renderRawLink(token);
             case 'blockquote': return this.renderBlockquote(token);
             case 'list': return this.renderList(token);
-            default: return html``;
+            default:
+                console.warn('Token não reconhecido:', token);
+                return html``;
+
         }
     }
 
@@ -119,7 +122,7 @@ export class CollabMessagesRichPreviewText102025 extends StateLitElement {
                 ${this.renderMarker(token.markerEnd)}
             `;
         }
-        
+
         return html`
             <div class="collab-md-codeblock-card">
             <div class="collab-md-codeblock-header">
