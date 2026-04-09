@@ -119,8 +119,11 @@ const message_pt = {
     agentIdentityMd: 'Identity (Markdown)',
     agentIdentityMdHint: 'Identidade e papel do agente',
     agentIdentityMdPlaceholder: 'Descreva a identidade do agente...',
+    agentNameHint: 'Apenas letras e números, deve começar com letra',
 
     errorAgentWorkspace: 'Workspace é obrigatório',
+    errorAgentNameInvalid: 'Nome deve conter apenas letras e números, e começar com uma letra',
+
     creatingAgent: 'Criando agente...',
 };
 
@@ -205,8 +208,10 @@ const message_en = {
     agentIdentityMd: 'Identity (Markdown)',
     agentIdentityMdHint: 'Agent identity and role',
     agentIdentityMdPlaceholder: 'Describe the agent identity...',
+    agentNameHint: 'Letters and numbers only, must start with a letter',
 
     errorAgentWorkspace: 'Workspace is required',
+    errorAgentNameInvalid: 'Name must contain only letters and numbers, and start with a letter',
     creatingAgent: 'Creating agent...',
 };
 
@@ -714,8 +719,9 @@ export class CollabMessagesSettingsOpenClaw extends StateLitElement {
               ${this.renderAvatar(agent)}
             </div>
             <div class="agent-info">
-                <span class="agent-name">${agent.name}</span>
+                <span class="agent-name">${agent.name}(${agent.collabUserId})</span>
                 <span class="agent-sender-id">${agent.id}</span>
+            
             </div>
             <div class="agent-actions" style="display:none"> 
                 <button class="btn-icon" @click=${() => this.handleOpenEditAgent(agent)} title="${this.msg.editConnector}">
@@ -796,7 +802,11 @@ export class CollabMessagesSettingsOpenClaw extends StateLitElement {
                     .value=${this.newAgentName} 
                     @input=${this.handleNewAgentNameInput}
                     placeholder="${this.msg.agentNamePlaceholder}"
+                    pattern="^[a-zA-Z][a-zA-Z0-9]*$"
+                    autocomplete="off"
+                    spellcheck="false"
                 />
+                <small class="field-hint">${this.msg.agentNameHint}</small>
             </div>
 
             <div class="form-field">
@@ -1318,7 +1328,7 @@ export class CollabMessagesSettingsOpenClaw extends StateLitElement {
             };
 
             await this.removeIntegration(this.editingConnector);
-            
+
             this.connectors = updatedConnectors;
             this.labelOkConnector = this.msg.successRemoveConnector;
             this.showDeleteConfirmation = false;
@@ -1368,7 +1378,11 @@ export class CollabMessagesSettingsOpenClaw extends StateLitElement {
 
     private handleNewAgentNameInput(e: Event) {
         const input = e.target as HTMLInputElement;
-        this.newAgentName = input.value;
+        let value = input.value;
+        value = value.replace(/[^a-zA-Z0-9]/g, '');
+        value = value.replace(/^[0-9]+/, '');
+        this.newAgentName = value;
+        input.value = value;
     }
 
     private handleNewAgentAvatarInput(e: Event) {
@@ -1408,8 +1422,16 @@ export class CollabMessagesSettingsOpenClaw extends StateLitElement {
         this.labelOkAgent = '';
         this.labelErrorAgent = '';
 
-        if (!this.newAgentName.trim()) {
+        const agentName = this.newAgentName.trim();
+
+        if (!agentName) {
             this.labelErrorAgent = this.msg.errorAgentName;
+            return;
+        }
+
+        const validNameRegex = /^[a-zA-Z][a-zA-Z0-9]*$/;
+        if (!validNameRegex.test(agentName)) {
+            this.labelErrorAgent = this.msg.errorAgentNameInvalid;
             return;
         }
 

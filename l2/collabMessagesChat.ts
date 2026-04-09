@@ -1232,6 +1232,8 @@ export class CollabMessagesChat extends StateLitElement {
                 this.openTask();
             }
 
+            await this.verifyChatScroll();
+
 
         } catch (err: any) {
             this.isThreadError = true;
@@ -1925,6 +1927,7 @@ export class CollabMessagesChat extends StateLitElement {
 
 
     private async verifyChatScroll() {
+        
         if (this.messageContainer && (this.isSystemChangeScroll)) {
             await this.updateComplete;
             const target = this.unreadEl;
