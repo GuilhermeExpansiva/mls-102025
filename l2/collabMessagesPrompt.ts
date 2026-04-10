@@ -5,11 +5,9 @@ import { customElement, property, state, query, } from 'lit/decorators.js';
 import { collab_arrow_up_long } from '/_102025_/l2/collabMessagesIcons.js';
 import { getThread, listUsers } from '/_102025_/l2/collabMessagesIndexedDB.js';
 import { emojiList } from '/_102025_/l2/collabMessagesEmojis.js'
-
 import { environment } from '/_102036_/l2/environmentContract.js';
 import * as msg from '/_102025_/l2/shared/interfaces.js';
 import { StateLitElement } from '/_102029_/l2/stateLitElement.js';
-
 
 import '/_102025_/l2/collabMessagesAvatar.js';
 import { parseInlineRichText, RichToken } from '/_102025_/l2/collabMessagesRichTextParser.js';
